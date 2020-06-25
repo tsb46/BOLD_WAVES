@@ -6,6 +6,10 @@
 # environment
 .env
 
+#pycache
+**/__pycache__
+
+
 # juypter notebook
 .ipynb_checkpoints
 
