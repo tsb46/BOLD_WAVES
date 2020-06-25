@@ -1,7 +1,7 @@
 import boto3
-import nibabel as nb
 
 from io import BytesIO
+from nibabel import FileHolder, Cifti2Image
 
 
 # Ensure you have AWS CLI installed and its properly configured - 'aws configure'
@@ -25,7 +25,8 @@ def load_data_and_stack_s3(bucket_name, n_sub):
 	for cifti_file in cifti_files_sub:
 		cifti_obj = client.get_object(Bucket=bucket_name, Key=cifti_file.key)
 		print(cifti_file.key)
-		cifti = nb.load(BytesIO(cifti_obj['Body'].read()))
+		cifti_bytes = FileHolder(fileobj=BytesIO(cifti_obj['Body'].read()))
+		cifti = Cifti2Image.from_filemap({'header': cifti_bytes, 'image': cifti_bytes})
 		cifti_data = np.array(cifti.get_fdata())
 		cifti.uncache()
 		cifti_group.append(cifti_data)
