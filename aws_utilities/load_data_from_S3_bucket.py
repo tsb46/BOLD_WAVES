@@ -22,7 +22,7 @@ def load_data_and_stack_s3(bucket_name, n_sub):
 	if n_sub is None:
 		n_sub = len(cifti_files)
 	cifti_files_sub = cifti_files[:n_sub]
-	group_data = pre_allocate_array(client, cifti_files_sub, n_sub)
+	group_data = pre_allocate_array(client, bucket_name, cifti_files_sub, n_sub)
 	row_indx=0
 	for cifti_file in cifti_files_sub:
 		print(cifti_file.key)
@@ -39,7 +39,7 @@ def load_data_and_stack_s3(bucket_name, n_sub):
 	return group_data, hdr
 
 
-def pre_allocate_array(client_obj, cifti_files, n_sub):
+def pre_allocate_array(client_obj, bucket_name, cifti_files, n_sub):
 	cifti_obj = client_obj.get_object(Bucket=bucket_name, Key=cifti_files[0].key)
 	cifti_bytes = FileHolder(fileobj=BytesIO(cifti_obj['Body'].read()))
 	cifti = Cifti2Image.from_file_map({'header': cifti_bytes, 'image': cifti_bytes})

@@ -9,6 +9,9 @@
 #pycache
 **/__pycache__
 
+#Results files: .nii, .pkl
+*.pkl
+*.nii
 
 # juypter notebook
 .ipynb_checkpoints

@@ -74,7 +74,10 @@ def run_main(input_dir, n_comps, n_sub, pca_type, aws_load):
     else:
         raise Exception('Only PCA types available are: "real" or "complex"')
     pca_output = pca(group_data, n_comps)
-    pickle.dump(pca_output, open(f'pca_results_n{n_comps}.pkl', 'wb'))
+    if pca_type == 'complex':
+        pickle.dump(pca_output, open(f'pca_complex_results_n{n_comps}.pkl', 'wb'))
+    else:
+        pickle.dump(pca_output, open(f'pca_results_n{n_comps}.pkl', 'wb'))
     write_results_to_cifti(pca_output['Va'], n_comps, hdr, pca_type)
 
 
