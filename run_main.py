@@ -5,9 +5,13 @@ import numpy as np
 import pickle
 
 from glob import glob
+from aws_utilities.load_data_from_S3_bucket import load_data_and_stack_s3
 from scipy.signal import hilbert
 from scipy.stats import zscore
 
+bucket_name = 'bolt-bucket' # if you're loading from S3 bucket - 
+# change to your aws S3 bucket name - make sure you configure your 
+# AWS CLI for S3 access
 
 def hilbert_transform(input_data):
     complex_data = hilbert(input_data, axis=0)
@@ -45,8 +49,12 @@ def pca(input_data, n_comps):
     return output_dict
 
 
-def run_main(input_dir, n_comps, n_sub, pca_type):
-    group_data, hdr = load_data_and_stack(input_dir, n_sub)
+def run_main(input_dir, n_comps, n_sub, pca_type, aws_load):
+    if aws_load:
+        group_data, hdr = load_data_and_stack_s3(bucket_name, n_sub)
+    else:
+        group_data, hdr = load_data_and_stack(input_dir, n_sub)
+
     if pca_type == 'complex':
         group_data = hilbert_transform(group_data)
     elif pca_type == 'real':
@@ -78,8 +86,10 @@ if __name__ == '__main__':
     """Run main analysis"""
     parser = argparse.ArgumentParser(description='Run main analysis')
     parser.add_argument('-i', '--input_directory',
-                        help='<Required> path to directory containing cifti files',
-                        required=True,
+                        help='<Required unless loading from S3> path to '
+                        'directory containing cifti files - ',
+                        required=False,
+                        default='',
                         type=str)
     parser.add_argument('-n', '--n_comps',
                         help='<Required> Number of components from PCA',
@@ -93,6 +103,13 @@ if __name__ == '__main__':
                         help='Calculate complex or real PCA',
                         default='real',
                         type=str)
+    parser.add_argument('-a', '--load_from_aws_s3',
+                        help='Whether to load data from AWS S3 bucket - '
+                        ' 0=No or 1=Yes',
+                        default=0,
+                        type=int)
     args_dict = vars(parser.parse_args())
     run_main(args_dict['input_directory'], args_dict['n_comps'],
-             args_dict['n_sub'], args_dict['pca_type'])
+             args_dict['n_sub'], args_dict['pca_type'], 
+             args_dict['load_from_aws_s3'])
+
