@@ -1,0 +1,13 @@
+# directories
+/data/
+/mapalign/
+/results/
+
+# environment
+.env
+
+# juypter notebook
+.ipynb_checkpoints
+
+# .DS_Store
+.DS_Store
