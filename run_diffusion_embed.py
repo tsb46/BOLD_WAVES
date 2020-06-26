@@ -52,13 +52,13 @@ def run_main(input_dir, n_sub, perc_thresh, aws_load):
     # Free up memory
     del conn_matrix
     embed = diffusion_embed(affinity_mat)
-    pickle.dump(embed, open(f'diffusion_emb_n{n_comps}.pkl', 'wb'))
+    pickle.dump(embed, open(f'diffusion_embedding.pkl', 'wb'))
     write_results_to_cifti(embed, hdr)
 
 
 def write_results_to_cifti(emb_weights, hdr):
     hdr_axis0  = hdr.get_axis(0)
-    hdr_axis0.size = n_comps
+    hdr_axis0.size = emb_weights.shape[0]
     hdr_axis1 = hdr.get_axis(1)
     cifti_out = nb.Cifti2Image(emb_weights, (hdr_axis0, hdr_axis1))
     nb.save(cifti_out, f'diffusion_results.dtseries.nii')
