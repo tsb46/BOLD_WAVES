@@ -5,7 +5,7 @@ import numpy as np
 import pickle
 
 from glob import glob
-from aws_utilities.load_data_from_S3_bucket import load_data_and_stack_s3
+from utils.utils import load_data_and_stack_s3, load_data_and_stack 
 from scipy.signal import hilbert
 from scipy.stats import zscore
 
@@ -16,27 +16,6 @@ bucket_name = 'bolt-bucket' # if you're loading from S3 bucket -
 def hilbert_transform(input_data):
     complex_data = hilbert(input_data, axis=0)
     return complex_data
-
-
-def load_data_and_stack(input_dir, n_sub):
-    cifti_group = []
-    cifti_files = glob(input_dir + '/*dtseries.nii')
-    if n_sub is None:
-        n_sub = len(cifti_files)
-    cifti_files_sub = cifti_files[:n_sub]
-    group_data = pre_allocate_array(cifti_files_sub, n_sub)
-    row_indx = 0
-    for cifti_file in cifti_files_sub:
-        print(cifti_file)
-        cifti = nb.load(cifti_file)
-        cifti.set_data_dtype('<f4')
-        cifti_data = np.array(cifti.get_fdata())
-        cifti.uncache() 
-        n_time = cifti_data.shape[0]
-        group_data[row_indx:(row_indx+n_time), :] = cifti_data
-        row_indx += n_time
-    hdr = cifti.header
-    return group_data, hdr
 
 
 def pca(input_data, n_comps):
@@ -51,14 +30,6 @@ def pca(input_data, n_comps):
                    'exp_var': explained_variance_
                    }                           
     return output_dict
-
-
-def pre_allocate_array(cifti_files, n_sub):
-    cifti = nb.load(cifti_files[0])
-    n_rows, n_cols = cifti.shape
-    cifti_group_arr = np.empty((n_rows*n_sub, n_cols), np.float64)
-
-    return cifti_group_arr 
 
 
 def run_main(input_dir, n_comps, n_sub, pca_type, aws_load):
