@@ -46,7 +46,11 @@ def run_main(input_dir, n_sub, perc_thresh, aws_load):
     else:
         group_data, hdr = load_data_and_stack(input_dir, n_sub)
     conn_matrix = compute_connectivity_matrix(group_data, perc_thresh)
+    # Free up memory
+    del group_data
     affinity_mat = compute_affinity_matrix(conn_matrix)
+    # Free up memory
+    del conn_matrix
     embed = diffusion_embed(affinity_mat)
     pickle.dump(embed, open(f'diffusion_emb_n{n_comps}.pkl', 'wb'))
     write_results_to_cifti(embed, hdr)
