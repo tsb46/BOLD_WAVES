@@ -221,7 +221,7 @@ if __name__ == '__main__':
     parser.add_argument('-w', '--window_length',
                         help='Set window length for QPP',
                         default=30,
-                        type=float)
+                        type=int)
     parser.add_argument('-a', '--load_from_aws_s3',
                         help='Whether to load data from AWS S3 bucket - '
                         ' 0=No or 1=Yes',
