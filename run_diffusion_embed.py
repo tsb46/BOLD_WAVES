@@ -5,7 +5,6 @@ import numpy as np
 import pickle
 
 from mapalign.mapalign import embed
-from scipy.signal import hilbert
 from scipy.spatial.distance import pdist, squareform
 from scipy.stats import zscore
 from utils.utils import load_data_and_stack_s3, load_data_and_stack 
