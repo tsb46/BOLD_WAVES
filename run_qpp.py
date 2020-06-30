@@ -54,7 +54,7 @@ def normalize_segment(segment, df):
 
 
 def detect_qpp(data, window_length, num_scans,
-               permutations=5, low_corr=0.1,
+               permutations=10, low_corr=0.1,
                high_corr=0.3, thresh_iter=20,
                convergence_iterations=1,
                random_state=None):
