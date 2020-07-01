@@ -34,7 +34,7 @@ def correlation_threshold(high_thresh, low_thresh, thresh_iter):
 
 def detect_qpp(data, window_length, num_scans,
                parallel_cores, permutations=4, 
-               low_corr=0.1, high_corr=0.3, 
+               low_corr=0.1, high_corr=0.2, 
                thresh_iter=20,
                convergence_iterations=1,
                random_state=None):
@@ -177,7 +177,7 @@ def run_qpp_iteration(perm, data, window_length, trs, initial_trs,
             scan_window = normalize_segment(flattened_segment(data, window_length, tr), df)
             template_holder[tr] = np.dot(peaks_segments, scan_window)
 
-        if np.all(np.corrcoef(template_holder, template_holder_convergence) > 0.9999):
+        if np.all(np.corrcoef(template_holder, template_holder_convergence) > 0.999):
             break
 
         if convergence_iterations > 1:
