@@ -5,6 +5,7 @@ import numpy as np
 import os
 import pickle
 
+import multiprocessing as mp
 from numpy import ndarray
 from numpy.random import RandomState
 from scipy.signal import find_peaks
@@ -30,32 +31,11 @@ def correlation_threshold(high_thresh, low_thresh, thresh_iter):
     else:
         return [low_thresh] * 3 + [high_thresh] * (thresh_iter-3)
 
-def smooth(x):
-    """
-    Temporary moving average
-    """
-    return np.array(
-        [x[0]] +
-        [np.mean(x[0:3])] +
-        (np.convolve(x, np.ones(5), 'valid') / 5).tolist() +
-        [np.mean(x[-3:])] +
-        [x[-1]]
-    )
-
-
-def flattened_segment(data, window_length, pos):
-    return data[:, pos:pos + window_length].flatten(order='F')
-
-
-def normalize_segment(segment, df):
-    segment -= np.sum(segment) / df
-    segment = segment / np.sqrt(np.dot(segment, segment))
-    return segment
-
 
 def detect_qpp(data, window_length, num_scans,
-               permutations=10, low_corr=0.1,
-               high_corr=0.3, thresh_iter=20,
+               parallel_cores, permutations=4, 
+               low_corr=0.1, high_corr=0.3, 
+               thresh_iter=20,
                convergence_iterations=1,
                random_state=None):
     """
@@ -84,55 +64,23 @@ def detect_qpp(data, window_length, num_scans,
     initial_trs = random_state.choice(inpectable_trs, permutations)
 
     permutation_result = [{} for _ in range(permutations)]
-    for perm in range(permutations):
+    # Run permutation iterations in parallel or serial
+    if parallel_cores > 0:
+        pool = mp.Pool(parallel_cores)
+        permutation_result = \
+        pool.starmap(run_qpp_iteration, 
+                     [(perm, data, window_length, trs, initial_trs,
+                      df, inpectable_trs, iterations, 
+                      convergence_iterations, correlation_thresholds) 
+                      for perm in range(permutations)])
+    else:
+        permutation_result = \
+        [run_qpp_iteration(perm, data, window_length, trs, initial_trs,
+                           df, inpectable_trs, iterations, 
+                           convergence_iterations, correlation_thresholds) 
+        for perm in range(permutations)]
 
-        template_holder = np.zeros(trs)
-        random_initial_window = normalize_segment(flattened_segment(data, window_length, initial_trs[perm]), df)
-        for tr in inpectable_trs:
-            scan_window = normalize_segment(flattened_segment(data, window_length, tr), df)
-            template_holder[tr] = np.dot(random_initial_window, scan_window)
-
-        template_holder_convergence = np.zeros((convergence_iterations, trs))
-
-        for iteration in range(iterations):
-            print(iteration)
-            peak_threshold = correlation_thresholds[iteration]
-
-            peaks, _ = find_peaks(template_holder, height=peak_threshold, distance=window_length)
-            peaks = np.delete(peaks, np.where(~np.isin(peaks, inpectable_trs))[0])
-
-            template_holder = smooth(template_holder)
-
-            found_peaks = np.size(peaks)
-            if found_peaks < 1:
-                break
-
-            peaks_segments = flattened_segment(data, window_length, peaks[0])
-            for peak in peaks[1:]:
-                peaks_segments = peaks_segments + flattened_segment(data, window_length, peak)
-
-            peaks_segments = peaks_segments / found_peaks
-            peaks_segments = normalize_segment(peaks_segments, df)
-
-            for tr in inpectable_trs:
-                scan_window = normalize_segment(flattened_segment(data, window_length, tr), df)
-                template_holder[tr] = np.dot(peaks_segments, scan_window)
-
-            if np.all(np.corrcoef(template_holder, template_holder_convergence) > 0.9999):
-                break
-
-            if convergence_iterations > 1:
-                template_holder_convergence[1:] = template_holder_convergence[0:-1]
-            template_holder_convergence[0] = template_holder
-
-        if found_peaks > 1:
-            permutation_result[perm] = {
-                'template': template_holder,
-                'peaks': peaks,
-                'final_iteration': iteration,
-                'correlation_score': np.sum(template_holder[peaks]),
-            }
-
+        
     # Retrieve max correlation of template from permutations
     correlation_scores = np.array([
         r['correlation_score'] if r else 0.0 for r in permutation_result
@@ -184,17 +132,91 @@ def detect_qpp(data, window_length, num_scans,
     return packaged_results
 
 
-def run_main(input_dir, n_sub, window_length, aws_load):
+def flattened_segment(data, window_length, pos):
+    return data[:, pos:pos + window_length].flatten(order='F')
+
+
+def normalize_segment(segment, df):
+    segment -= np.sum(segment) / df
+    segment = segment / np.sqrt(np.dot(segment, segment))
+    return segment
+
+
+def run_qpp_iteration(perm, data, window_length, trs, initial_trs,
+                      df, inpectable_trs, iterations, 
+                      convergence_iterations, correlation_thresholds):
+    template_holder = np.zeros(trs)
+    random_initial_window = normalize_segment(flattened_segment(data, window_length, initial_trs[perm]), df)
+    for tr in inpectable_trs:
+        scan_window = normalize_segment(flattened_segment(data, window_length, tr), df)
+        template_holder[tr] = np.dot(random_initial_window, scan_window)
+
+    template_holder_convergence = np.zeros((convergence_iterations, trs))
+
+    for iteration in range(iterations):
+        print(iteration)
+        peak_threshold = correlation_thresholds[iteration]
+
+        peaks, _ = find_peaks(template_holder, height=peak_threshold, distance=window_length)
+        peaks = np.delete(peaks, np.where(~np.isin(peaks, inpectable_trs))[0])
+
+        template_holder = smooth(template_holder)
+
+        found_peaks = np.size(peaks)
+        if found_peaks < 1:
+            break
+
+        peaks_segments = flattened_segment(data, window_length, peaks[0])
+        for peak in peaks[1:]:
+            peaks_segments = peaks_segments + flattened_segment(data, window_length, peak)
+
+        peaks_segments = peaks_segments / found_peaks
+        peaks_segments = normalize_segment(peaks_segments, df)
+
+        for tr in inpectable_trs:
+            scan_window = normalize_segment(flattened_segment(data, window_length, tr), df)
+            template_holder[tr] = np.dot(peaks_segments, scan_window)
+
+        if np.all(np.corrcoef(template_holder, template_holder_convergence) > 0.9999):
+            break
+
+        if convergence_iterations > 1:
+            template_holder_convergence[1:] = template_holder_convergence[0:-1]
+        template_holder_convergence[0] = template_holder
+
+    if found_peaks > 1:
+        permutation_result = {
+            'template': template_holder,
+            'peaks': peaks,
+            'final_iteration': iteration,
+            'correlation_score': np.sum(template_holder[peaks]),
+        }
+    return permutation_result
+
+
+def run_main(input_dir, n_sub, window_length, parallel_cores, aws_load):
     if aws_load:
         group_data, hdr = load_data_and_stack_s3(bucket_name, n_sub)
     else:
         group_data, hdr = load_data_and_stack(input_dir, n_sub)
-    qpp_results = detect_qpp(group_data.T, 
-                                                      window_length, 
-                                                      n_sub)
+    qpp_results = detect_qpp(group_data.T, window_length, 
+                             n_sub, parallel_cores)
     pickle.dump(qpp_results, 
                 open(f'qpp_results.pkl', 'wb'))
     write_results_to_cifti(qpp_results[0].T, hdr)
+
+
+def smooth(x):
+    """
+    Temporary moving average
+    """
+    return np.array(
+        [x[0]] +
+        [np.mean(x[0:3])] +
+        (np.convolve(x, np.ones(5), 'valid') / 5).tolist() +
+        [np.mean(x[-3:])] +
+        [x[-1]]
+    )
 
 
 def write_results_to_cifti(segment, hdr):
@@ -222,6 +244,10 @@ if __name__ == '__main__':
                         help='Set window length for QPP',
                         default=30,
                         type=int)
+    parser.add_argument('-p', '--parallel_cores',
+                        help='Number of parrallel cores',
+                        default=0,
+                        type=int)
     parser.add_argument('-a', '--load_from_aws_s3',
                         help='Whether to load data from AWS S3 bucket - '
                         ' 0=No or 1=Yes',
@@ -229,6 +255,6 @@ if __name__ == '__main__':
                         type=int)
     args_dict = vars(parser.parse_args())
     run_main(args_dict['input_directory'], args_dict['n_sub'], 
-             args_dict['window_length'], 
+             args_dict['window_length'], args_dict['parallel_cores'],
              args_dict['load_from_aws_s3'])
 

@@ -61,10 +61,13 @@ def load_data_and_stack_s3(bucket_name, n_sub):
 
 
 def pre_allocate_array(cifti_files, n_sub):
-    cifti = nb.load(cifti_files[0])
-    n_rows, n_cols = cifti.shape
-    cifti_group_arr = np.empty((n_rows*n_sub, n_cols), np.float64)
-    return cifti_group_arr 
+	try:
+		cifti = nb.load(cifti_files[0])
+	except IndexError:
+		raise Exception('No files found in file path')
+	n_rows, n_cols = cifti.shape
+	cifti_group_arr = np.empty((n_rows*n_sub, n_cols), np.float64)
+	return cifti_group_arr 
 
 
 def pre_allocate_array_s3(client_obj, bucket_name, cifti_files, n_sub):
