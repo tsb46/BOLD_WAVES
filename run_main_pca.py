@@ -5,7 +5,8 @@ import numpy as np
 import pickle
 
 from glob import glob
-from utils.utils import load_data_and_stack_s3, load_data_and_stack 
+from utils.utils import load_data_and_stack, write_to_cifti, \
+write_to_gifti
 from scipy.signal import hilbert
 from scipy.stats import zscore
 
@@ -32,12 +33,13 @@ def pca(input_data, n_comps):
     return output_dict
 
 
-def run_main(input_dir, n_comps, n_sub, pca_type, aws_load):
-    if aws_load:
-        group_data, hdr = load_data_and_stack_s3(bucket_name, n_sub)
-    else:
-        group_data, hdr = load_data_and_stack(input_dir, n_sub)
-
+def run_main(n_comps, input_type, n_sub, pca_type, aws_load):
+    group_data, hdr = load_data_and_stack(n_sub, input_type, 
+                                          aws_load, bucket_name)
+    # Normalize data
+    group_data = zscore(group_data)
+    # Replace NaNs w/ zeros - some vertices have no data - i.e. all 0s
+    group_data[np.isnan(group_data)] = 0
     if pca_type == 'complex':
         group_data = hilbert_transform(group_data)
     elif pca_type == 'real':
@@ -45,47 +47,50 @@ def run_main(input_dir, n_comps, n_sub, pca_type, aws_load):
     else:
         raise Exception('Only PCA types available are: "real" or "complex"')
     pca_output = pca(group_data, n_comps)
-    if pca_type == 'complex':
-        pickle.dump(pca_output, open(f'pca_complex_results_n{n_comps}.pkl', 'wb'))
-    else:
-        pickle.dump(pca_output, open(f'pca_results_n{n_comps}.pkl', 'wb'))
-    write_results_to_cifti(pca_output['Va'], n_comps, hdr, pca_type)
+    write_results(input_type, pca_output, 
+                  pca_output['Va'], n_comps, 
+                  hdr, pca_type)
 
 
-def write_results_to_cifti(comp_weights, n_comps, hdr, pca_type):
-    hdr_axis0  = hdr.get_axis(0)
-    hdr_axis0.size = n_comps
-    hdr_axis1 = hdr.get_axis(1)
+def write_results(input_type, pca_output, comp_weights, 
+                  n_comps, hdr, pca_type):
     if pca_type == 'complex':
+        pickle.dump(pca_output, open(f'pca_complex_results.pkl', 'wb'))
         comp_weights_abs = np.abs(comp_weights)
         comp_weights_ang = np.angle(comp_weights)
-        cifti_out_mag = nb.Cifti2Image(comp_weights_abs, (hdr_axis0, hdr_axis1))
-        cifti_out_ang = nb.Cifti2Image(comp_weights_ang, (hdr_axis0, hdr_axis1))
-        nb.save(cifti_out_mag, f'pca_complex_results_n{n_comps}_comps_abs.dtseries.nii')
-        nb.save(cifti_out_ang, f'pca_complex_results_n{n_comps}_comps_ang.dtseries.nii')
-    else:
-        cifti_out = nb.Cifti2Image(comp_weights, (hdr_axis0, hdr_axis1))
-        nb.save(cifti_out, f'pca_results_n{n_comps}_comps.dtseries.nii')
+        if input_type == 'cifti':
+            write_to_cifti(comp_weights_abs, hdr, n_comps, 'pca_complex_abs')
+            write_to_cifti(comp_weights_ang, hdr, n_comps, 'pca_complex_ang')
+        elif input_type == 'gifti':
+            write_to_gifti(comp_weights_abs, hdr, 'pca_complex_abs')
+            write_to_gifti(comp_weights_ang, hdr, 'pca_complex_ang')
+    elif pca_type == 'real':
+        pickle.dump(pca_output, open(f'pca_results.pkl', 'wb'))
+        if input_type == 'cifti':
+            write_to_cifti(comp_weights, hdr, n_comps, 'pca')
+        elif input_type == 'gifti':
+            write_to_gifti(comp_weights, hdr, 'pca')
 
 
 if __name__ == '__main__':
     """Run main analysis"""
-    parser = argparse.ArgumentParser(description='Run main analysis')
-    parser.add_argument('-i', '--input_directory',
-                        help='<Required unless loading from S3> path to '
-                        'directory containing cifti files - ',
-                        required=False,
-                        default='',
-                        type=str)
+    parser = argparse.ArgumentParser(description='Run main PCA analysis')
     parser.add_argument('-n', '--n_comps',
                         help='<Required> Number of components from PCA',
                         required=True,
                         type=int)
+    parser.add_argument('-t', '--input_type',
+                        help='Whether to load resampled metric .gii files or '
+                        'full cifti files',
+                        choices=['cifti', 'gifti'],
+                        required=False,
+                        default='gifti',
+                        type=str)
     parser.add_argument('-s', '--n_sub',
                         help='Number of subjects to use',
                         default=None,
                         type=int)
-    parser.add_argument('-t', '--pca_type',
+    parser.add_argument('-p', '--pca_type',
                         help='Calculate complex or real PCA',
                         default='real',
                         type=str)
@@ -95,7 +100,8 @@ if __name__ == '__main__':
                         default=0,
                         type=int)
     args_dict = vars(parser.parse_args())
-    run_main(args_dict['input_directory'], args_dict['n_comps'],
+    run_main(args_dict['n_comps'],
+             args_dict['input_type'],
              args_dict['n_sub'], args_dict['pca_type'], 
              args_dict['load_from_aws_s3'])
 

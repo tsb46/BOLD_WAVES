@@ -9,7 +9,8 @@ import multiprocessing as mp
 from numpy import ndarray
 from numpy.random import RandomState
 from scipy.signal import find_peaks
-from utils.utils import load_data_and_stack_s3, load_data_and_stack 
+from utils.utils import load_data_and_stack,write_to_cifti, \
+write_to_gifti
 
 # Code is a reconfiguration of:
 # https://github.com/FCP-INDI/C-PAC/blob/master/CPAC/qpp/qpp.py
@@ -33,7 +34,7 @@ def correlation_threshold(high_thresh, low_thresh, thresh_iter):
 
 
 def detect_qpp(data, window_length, num_scans,
-               parallel_cores, permutations=4, 
+               parallel_cores, permutations=5, 
                low_corr=0.1, high_corr=0.2, 
                thresh_iter=20,
                convergence_iterations=1,
@@ -194,16 +195,12 @@ def run_qpp_iteration(perm, data, window_length, trs, initial_trs,
     return permutation_result
 
 
-def run_main(input_dir, n_sub, window_length, parallel_cores, aws_load):
-    if aws_load:
-        group_data, hdr = load_data_and_stack_s3(bucket_name, n_sub)
-    else:
-        group_data, hdr = load_data_and_stack(input_dir, n_sub)
+def run_main(n_sub, input_type, window_length, parallel_cores, aws_load):
+    group_data, hdr = load_data_and_stack(n_sub, input_type, 
+                                          aws_load, bucket_name)
     qpp_results = detect_qpp(group_data.T, window_length, 
                              n_sub, parallel_cores)
-    pickle.dump(qpp_results, 
-                open(f'qpp_results.pkl', 'wb'))
-    write_results_to_cifti(qpp_results[0].T, hdr)
+    write_results(input_type, qpp_results, qpp_results[0].T, hdr)
 
 
 def smooth(x):
@@ -219,27 +216,28 @@ def smooth(x):
     )
 
 
-def write_results_to_cifti(segment, hdr):
-    hdr_axis0  = hdr.get_axis(0)
-    hdr_axis0.size = segment.shape[0]
-    hdr_axis1 = hdr.get_axis(1)
-    cifti_out = nb.Cifti2Image(segment, (hdr_axis0, hdr_axis1))
-    nb.save(cifti_out, f'qpp_results.dtseries.nii')
+def write_results(input_type, qpp_results, segment, hdr):
+    pickle.dump(qpp_results, open(f'qpp_results.pkl', 'wb'))
+    if input_type == 'cifti':
+        write_to_cifti(segment, hdr, n_comps, 'qpp')
+    elif input_type == 'gifti':
+        write_to_gifti(segment, hdr, 'qpp')
 
 
 if __name__ == '__main__':
     """Run main analysis"""
     parser = argparse.ArgumentParser(description='Run main analysis')
-    parser.add_argument('-i', '--input_directory',
-                        help='<Required unless loading from S3> path to '
-                        'directory containing cifti files - ',
-                        required=False,
-                        default='',
-                        type=str)
     parser.add_argument('-s', '--n_sub',
                         help='Number of subjects to use',
                         default=None,
                         type=int)
+    parser.add_argument('-t', '--input_type',
+                        help='Whether to load resampled metric .gii files or '
+                        'full cifti files',
+                        choices=['cifti', 'gifti'],
+                        required=False,
+                        default='gifti',
+                        type=str)
     parser.add_argument('-w', '--window_length',
                         help='Set window length for QPP',
                         default=30,
@@ -254,7 +252,7 @@ if __name__ == '__main__':
                         default=0,
                         type=int)
     args_dict = vars(parser.parse_args())
-    run_main(args_dict['input_directory'], args_dict['n_sub'], 
+    run_main(args_dict['n_sub'], args_dict['input_type'],  
              args_dict['window_length'], args_dict['parallel_cores'],
              args_dict['load_from_aws_s3'])
 

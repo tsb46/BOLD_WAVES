@@ -7,7 +7,7 @@ import pickle
 from mapalign.mapalign import embed
 from scipy.spatial.distance import pdist, squareform
 from scipy.stats import zscore
-from utils.utils import load_data_and_stack_s3, load_data_and_stack 
+from utils.utils import load_data_and_stack 
 
 # Majority of code is based on:
 #https://github.com/NeuroanatomyAndConnectivity/gradient_analysis
@@ -41,9 +41,8 @@ def diffusion_embed(affinity_mat, alpha=0.5):
 
 def run_main(input_dir, n_sub, perc_thresh, aws_load):
     if aws_load:
-        group_data, hdr = load_data_and_stack_s3(bucket_name, n_sub)
-    else:
-        group_data, hdr = load_data_and_stack(input_dir, n_sub)
+        input_dir = None
+    group_data, hdr = load_data_and_stack(input_dir, n_sub, aws_load, bucket_name)
     conn_matrix = compute_connectivity_matrix(group_data, perc_thresh)
     # Free up memory
     del group_data
