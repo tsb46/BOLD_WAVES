@@ -12,10 +12,6 @@ write_to_gifti
 # Majority of code is adapted from:
 # https://github.com/RaichleLab/lag-code
 
-bucket_name = 'bolt-bucket' # if you're loading from S3 bucket - 
-# change to your aws S3 bucket name - make sure you configure your 
-# AWS CLI for S3 access
-
 
 def compute_lag_matrix(subj_data, num_nodes, tr, lags, lag_lim):
     # Normalize time series
@@ -133,9 +129,8 @@ def run_lag_projection(input_data, tr=0.72, lag=6, lag_lim=4):
                                                      zero_lag_corr)
     return uw_lag_proj, w_lag_proj, cov_mat
 
-def run_main(input_type, n_sub, aws_load):
-    group_data, hdr = load_data_and_stack(n_sub, input_type, 
-                                          aws_load, bucket_name)
+def run_main(input_type, n_sub):
+    group_data, hdr = load_data_and_stack(n_sub, input_type)
     lag_results = run_lag_projection(group_data)
     write_results(input_type, lag_results, 
                   lag_results[0][np.newaxis, :], hdr)
@@ -148,8 +143,6 @@ def write_results(input_type, lag_results, lag_projection, hdr):
         write_to_cifti(lag_projection, hdr, n_comps, 'lag')
     elif input_type == 'gifti':
         write_to_gifti(lag_projection, hdr, 'lag')
-
-
 
 
 if __name__ == '__main__':
@@ -166,12 +159,6 @@ if __name__ == '__main__':
                         help='Number of subjects to use',
                         default=None,
                         type=int)
-    parser.add_argument('-a', '--load_from_aws_s3',
-                        help='Whether to load data from AWS S3 bucket - '
-                        ' 0=No or 1=Yes',
-                        default=0,
-                        type=int)
     args_dict = vars(parser.parse_args())
-    run_main(args_dict['input_type'], args_dict['n_sub'],  
-             args_dict['load_from_aws_s3'])
+    run_main(args_dict['input_type'], args_dict['n_sub'])
 

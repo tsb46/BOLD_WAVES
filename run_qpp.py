@@ -15,10 +15,6 @@ write_to_gifti
 # Code is a reconfiguration of:
 # https://github.com/FCP-INDI/C-PAC/blob/master/CPAC/qpp/qpp.py
 
-bucket_name = 'bolt-bucket' # if you're loading from S3 bucket - 
-# change to your aws S3 bucket name - make sure you configure your 
-# AWS CLI for S3 access
-
 
 def correlation_threshold(high_thresh, low_thresh, thresh_iter):
     """
@@ -195,9 +191,8 @@ def run_qpp_iteration(perm, data, window_length, trs, initial_trs,
     return permutation_result
 
 
-def run_main(n_sub, input_type, window_length, parallel_cores, aws_load):
-    group_data, hdr = load_data_and_stack(n_sub, input_type, 
-                                          aws_load, bucket_name)
+def run_main(n_sub, input_type, window_length, parallel_cores):
+    group_data, hdr = load_data_and_stack(n_sub, input_type)
     qpp_results = detect_qpp(group_data.T, window_length, 
                              n_sub, parallel_cores)
     write_results(input_type, qpp_results, qpp_results[0].T, hdr)
@@ -226,7 +221,7 @@ def write_results(input_type, qpp_results, segment, hdr):
 
 if __name__ == '__main__':
     """Run main analysis"""
-    parser = argparse.ArgumentParser(description='Run main analysis')
+    parser = argparse.ArgumentParser(description='Run main QPP analysis')
     parser.add_argument('-s', '--n_sub',
                         help='Number of subjects to use',
                         default=None,
@@ -246,13 +241,7 @@ if __name__ == '__main__':
                         help='Number of parrallel cores',
                         default=0,
                         type=int)
-    parser.add_argument('-a', '--load_from_aws_s3',
-                        help='Whether to load data from AWS S3 bucket - '
-                        ' 0=No or 1=Yes',
-                        default=0,
-                        type=int)
     args_dict = vars(parser.parse_args())
     run_main(args_dict['n_sub'], args_dict['input_type'],  
-             args_dict['window_length'], args_dict['parallel_cores'],
-             args_dict['load_from_aws_s3'])
+             args_dict['window_length'], args_dict['parallel_cores'])
 

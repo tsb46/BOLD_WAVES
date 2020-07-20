@@ -1,24 +1,11 @@
-import boto3
 import nibabel as nb 
 import numpy as np
 import os
 
 from glob import glob
-from io import BytesIO
 from itertools import groupby 
 from nibabel import FileHolder, Cifti2Image, GiftiImage 
 from nibabel.gifti.gifti import GiftiDataArray
-
-
-def assign_files_to_list(bucket_obj, input_type):
-	if input_type == 'cifti':
-		files = list(bucket_obj.objects.filter(Prefix='data/proc_2_norm_filter/'))
-		subj_files = [obj for obj in files if obj.key.endswith('.nii')]
-	elif input_type == 'gifti':
-		files = list(bucket_obj.objects.filter(Prefix='data/proc_3_surf_resamp/'))
-		subj_files = [obj for obj in files if obj.key.endswith('.gii')]
-		subj_files = assign_gifti_files_to_nested_list(subj_files)
-	return subj_files
 
 
 def assign_gifti_files_to_nested_list(gifti_files):
@@ -28,18 +15,12 @@ def assign_gifti_files_to_nested_list(gifti_files):
 	return nested_gifti_list
 
 
-def get_subj_file_list(n_sub, input_type, aws=False, resource=None, bucket_name=None):
-	if aws:
-		my_bucket = resource.Bucket(bucket_name)
-		subj_files = assign_files_to_list(my_bucket, input_type)
-		file_key_dict = {file_obj.key:file_obj for file_obj in subj_files}
-		subj_files = [file_key_dict[key] for key in sorted(file_key_dict.keys())]
-	else:
-		if input_type == 'cifti':
-			subj_files = sorted(glob('data/proc_2_norm_filter/*dtseries.nii'))
-		elif input_type == 'gifti':
-			subj_files = glob('data/proc_3_surf_resamp/*.gii')
-			subj_files = assign_gifti_files_to_nested_list(subj_files)
+def get_subj_file_list(n_sub, input_type):
+	if input_type == 'cifti':
+		subj_files = sorted(glob('data/proc_2_norm_filter/*dtseries.nii'))
+	elif input_type == 'gifti':
+		subj_files = glob('data/proc_3_surf_resamp/*.gii')
+		subj_files = assign_gifti_files_to_nested_list(subj_files)
 	if len(subj_files) < 1:
 		raise Exception('No files found in file path')
 	if n_sub is None:
@@ -48,61 +29,31 @@ def get_subj_file_list(n_sub, input_type, aws=False, resource=None, bucket_name=
 	return subj_files_sub
 
 
-def load_cifti(cifti_fp, aws=False, client=None, bucket_name=None):
-	if aws:
-		cifti_obj = client.get_object(Bucket=bucket_name, Key=cifti_fp.key)
-		cifti_bytes = FileHolder(fileobj=BytesIO(cifti_obj['Body'].read()))
-		cifti = Cifti2Image.from_file_map(
-			{'header': cifti_bytes, 
-			'image': cifti_bytes}
-			)
-	else:
-		cifti = nb.load(cifti_fp)
+def load_cifti(cifti_fp):
+	cifti = nb.load(cifti_fp)
 	return cifti
 
 
-def load_gifti(gifti_fps, aws=False, client=None, bucket_name=None):
+def load_gifti(gifti_fps):
 	gifti_LR = []
 	file_base = gifti_fps[0].split('.')[0]
-	if aws:
-		for hem in ['L', 'R']:
-			indx = gifti_fps.index(f'{file_base}.{hem}.func.gii')
-			gifti_obj = client.get_object(Bucket=bucket_name, 
-				Key=gifti_fps[indx].key)
-			gifti_bytes = FileHolder(fileobj=BytesIO(gifti_obj['Body'].read()))
-			gifti = GiftiImage.from_file_map(
-				{'header': gifti_bytes,
-				'image': gifti_bytes}
-				)
-			gifti_LR.append(gifti)
-	else:
-		for hem in ['L', 'R']:
-			indx = gifti_fps.index(f'{file_base}.{hem}.func.gii')
-			gifti_LR.append(nb.load(gifti_fps[indx]))
+	for hem in ['L', 'R']:
+		indx = gifti_fps.index(f'{file_base}.{hem}.func.gii')
+		gifti_LR.append(nb.load(gifti_fps[indx]))
 	return gifti_LR
 
 
-def load_data_and_stack(n_sub, input_type, aws=False, bucket_name=None):
-	if aws:
-		# Ensure you have AWS CLI installed and it's properly 
-		# configured - 'aws configure'
-		client = boto3.client('s3')
-		resource = boto3.resource('s3')
-	else:
-		client = None
-		resource = None
-	subj_files = get_subj_file_list(n_sub, input_type, aws, 
-		resource, bucket_name)
-	group_data = pre_allocate_array(subj_files[0], input_type, n_sub, 
-		aws, client, bucket_name)
+def load_data_and_stack(n_sub, input_type):
+	subj_files = get_subj_file_list(n_sub, input_type)
+	group_data = pre_allocate_array(subj_files[0], input_type, n_sub)
 	row_indx = 0
 	for subj_file in subj_files:
 		print(subj_file)
 		if input_type == 'cifti':
-			subj_file = load_cifti(subj_file, aws, client, bucket_name)
+			subj_file = load_cifti(subj_file)
 			hdr, subj_data, n_time = pull_cifti_data(subj_file)
 		elif input_type == 'gifti':
-			subj_file = load_gifti(subj_file, aws, client, bucket_name)
+			subj_file = load_gifti(subj_file)
 			subj_data, n_time = pull_gifti_data(subj_file)
 			hdr = subj_file
 		group_data[row_indx:(row_indx+n_time), :] = subj_data
@@ -126,12 +77,11 @@ def pull_gifti_data(giftis):
 	return gifti_all, n_time
 
 
-def pre_allocate_array(subj_file, input_type, n_sub, aws=False, 
-	client=None, bucket_name=None):
+def pre_allocate_array(subj_file, input_type, n_sub):
 	if input_type == 'cifti':
-		subj = load_cifti(subj_file, aws, client, bucket_name)	
+		subj = load_cifti(subj_file)	
 	elif input_type == 'gifti':
-		subj = load_gifti(subj_file, aws, client, bucket_name)
+		subj = load_gifti(subj_file)
 		subj, _ = pull_gifti_data(subj)
 	n_rows, n_cols = subj.shape
 	group_array = np.empty((n_rows*n_sub, n_cols), np.float64)
