@@ -98,7 +98,7 @@ def write_to_cifti(result, hdr, n_rows, script_name):
 
 def write_to_gifti(result, giftis, script_name):
 	example_array_L = giftis[0].darrays[0]
-	example_array_R = giftis[1].darrays[0]
+	example_array_R = giftis[1].darrays[0]		
 	L_shape = len(giftis[0].agg_data()[0])
 	L_result = result[:, :L_shape]
 	R_result = result[:, L_shape:]

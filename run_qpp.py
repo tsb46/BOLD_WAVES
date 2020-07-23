@@ -30,7 +30,7 @@ def correlation_threshold(high_thresh, low_thresh, thresh_iter):
 
 
 def detect_qpp(data, window_length, num_scans,
-               parallel_cores, permutations=5, 
+               parallel_cores, permutations=10, 
                low_corr=0.1, high_corr=0.2, 
                thresh_iter=20,
                convergence_iterations=1,

@@ -1,6 +1,4 @@
-boto3==1.14.10
-botocore==1.17.10
-certifi==2020.4.5.2
+certifi==2020.6.20
 cycler==0.10.0
 docutils==0.15.2
 fbpca==1.0
