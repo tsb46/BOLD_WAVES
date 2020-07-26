@@ -10,13 +10,11 @@ from sklearn.manifold import SpectralEmbedding
 from sklearn.metrics.pairwise import cosine_similarity
 from utils.utils import load_data_and_stack, write_to_cifti, write_to_gifti
 
-# Majority of code is based on:
-#https://github.com/NeuroanatomyAndConnectivity/gradient_analysis
-
 
 def compute_affinity_matrix(group_data, perc_thresh):
     # Use normalized angular distance
     affinity_mat = cosine_similarity(group_data.T)
+    # github.com/MICA-MNI/BrainSpace/blob/master/brainspace/gradient/kernels.py
     affinity_mat = 1 - np.arccos(affinity_mat, affinity_mat)/np.pi
     row_prct = np.percentile(affinity_mat, perc_thresh, axis=1)
     mask = np.array([row < prct for row, prct in zip(affinity_mat, row_prct)])
@@ -31,25 +29,29 @@ def diffusion_embed(affinity_mat, n_comps):
     return embed.T
 
 
-def run_main(n_sub, n_comps, input_type, perc_thresh):
-    group_data, hdr = load_data_and_stack(n_sub, input_type)
+def run_main(n_sub, n_comps, global_signal, input_type, perc_thresh):
+    group_data, hdr = load_data_and_stack(n_sub, input_type, global_signal)
     affinity_mat = compute_affinity_matrix(group_data, perc_thresh)
     embed = diffusion_embed(affinity_mat, n_comps)
-    write_results(embed, hdr, input_type)
+    write_results(embed, hdr, input_type, global_signal)
 
 
-def write_results(emb_weights, hdr, input_type):
-    pickle.dump(emb_weights, open(f'diffusion_embedding_results.pkl', 'wb'))
+def write_results(emb_weights, hdr, input_type, global_signal):
+    if global_signal:
+        analysis_str = 'diffusion_embedding_gs'
+    else:
+        analysis_str = 'diffusion_embedding'
+    pickle.dump(emb_weights, open(f'{analysis_str}_results.pkl', 'wb'))
     if input_type == 'cifti':
         write_to_cifti(emb_weights, hdr, 
-                       emb_weights.shape[0], 'diffusion_emb')
+                       emb_weights.shape[0], analysis_str)
     elif input_type == 'gifti':
-        write_to_gifti(emb_weights, hdr, 'diffusion_emb')
+        write_to_gifti(emb_weights, hdr, analysis_str)
 
 
 if __name__ == '__main__':
     """Run main analysis"""
-    parser = argparse.ArgumentParser(description='Run main analysis')
+    parser = argparse.ArgumentParser(description='Run diffusion embedding')
     parser.add_argument('-s', '--n_sub',
                         help='Number of subjects to use',
                         default=None,
@@ -59,6 +61,11 @@ if __name__ == '__main__':
                         default=2,
                         required=False,
                         type=int)
+    parser.add_argument('-g', '--gs_regress',
+                        help='Whether to use global signal regressed data',
+                        default=0,
+                        required=False,
+                        type=bool)
     parser.add_argument('-t', '--input_type',
                         help='Whether to load resampled metric .gii files or '
                         'full cifti files',
@@ -71,6 +78,6 @@ if __name__ == '__main__':
                         default=90,
                         type=float)
     args_dict = vars(parser.parse_args())
-    run_main(args_dict['n_sub'], args_dict['n_comps'], 
+    run_main(args_dict['n_sub'], args_dict['n_comps'], args_dict['gs_regress'],
              args_dict['input_type'], args_dict['percentile_threshold'])
 

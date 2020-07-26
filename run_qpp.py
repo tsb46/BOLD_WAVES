@@ -191,11 +191,12 @@ def run_qpp_iteration(perm, data, window_length, trs, initial_trs,
     return permutation_result
 
 
-def run_main(n_sub, input_type, window_length, parallel_cores):
-    group_data, hdr = load_data_and_stack(n_sub, input_type)
+def run_main(n_sub, global_signal, input_type, window_length, parallel_cores):
+    group_data, hdr = load_data_and_stack(n_sub, input_type, global_signal)
     qpp_results = detect_qpp(group_data.T, window_length, 
                              n_sub, parallel_cores)
-    write_results(input_type, qpp_results, qpp_results[0].T, hdr)
+    write_results(input_type, qpp_results, qpp_results[0].T, 
+                  hdr, global_signal)
 
 
 def smooth(x):
@@ -211,12 +212,16 @@ def smooth(x):
     )
 
 
-def write_results(input_type, qpp_results, segment, hdr):
-    pickle.dump(qpp_results, open(f'qpp_results.pkl', 'wb'))
+def write_results(input_type, qpp_results, segment, hdr, global_signal):
+    if global_signal:
+        analysis_str = 'qpp_gs'
+    else:
+        analysis_str = 'qpp'
+    pickle.dump(qpp_results, open(f'{analysis_str}_results.pkl', 'wb'))
     if input_type == 'cifti':
-        write_to_cifti(segment, hdr, n_comps, 'qpp')
+        write_to_cifti(segment, hdr, n_comps, analysis_str)
     elif input_type == 'gifti':
-        write_to_gifti(segment, hdr, 'qpp')
+        write_to_gifti(segment, hdr, analysis_str)
 
 
 if __name__ == '__main__':
@@ -226,6 +231,11 @@ if __name__ == '__main__':
                         help='Number of subjects to use',
                         default=None,
                         type=int)
+    parser.add_argument('-g', '--gs_regress',
+                        help='Whether to use global signal regressed data',
+                        default=0,
+                        required=False,
+                        type=bool)
     parser.add_argument('-t', '--input_type',
                         help='Whether to load resampled metric .gii files or '
                         'full cifti files',
@@ -242,6 +252,7 @@ if __name__ == '__main__':
                         default=0,
                         type=int)
     args_dict = vars(parser.parse_args())
-    run_main(args_dict['n_sub'], args_dict['input_type'],  
-             args_dict['window_length'], args_dict['parallel_cores'])
+    run_main(args_dict['n_sub'], args_dict['gs_regress'], 
+             args_dict['input_type'], args_dict['window_length'], 
+             args_dict['parallel_cores'])
 

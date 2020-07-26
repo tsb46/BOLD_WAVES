@@ -15,18 +15,33 @@ def assign_gifti_files_to_nested_list(gifti_files):
 	return nested_gifti_list
 
 
-def get_subj_file_list(n_sub, input_type):
+def get_subj_file_list(n_sub, input_type, global_signal, task_or_rest):
 	if input_type == 'cifti':
-		subj_files = sorted(glob('data/proc_2_norm_filter/*dtseries.nii'))
+		if global_signal:
+			raise Exception('Global signal regression was '
+			                'only conducted for gifti processed files')
+		if task_or_rest == 'rest':
+			subj_files = sorted(glob('data/rest/proc_2_norm_filter/*dtseries.nii'))
+		else:
+			subj_files = sorted(glob('data/task/proc_2_norm_filter/*dtseries.nii'))
 	elif input_type == 'gifti':
-		subj_files = glob('data/proc_3_surf_resamp/*.gii')
+		if global_signal:
+			if task_or_rest == 'rest':
+				subj_files = glob('data/rest/proc_4_gs_regress/*.gii')
+			else:
+				subj_files = glob('data/task/proc_4_gs_regress/*.gii')
+		else:
+			if task_or_rest == 'rest':
+				subj_files = glob('data/rest/proc_3_surf_resamp/*.gii')
+			else:
+				subj_files = glob('data/task/proc_3_surf_resamp/*.gii')
 		subj_files = assign_gifti_files_to_nested_list(subj_files)
 	if len(subj_files) < 1:
 		raise Exception('No files found in file path')
 	if n_sub is None:
 		n_sub = len(subj_files)
 	subj_files_sub = subj_files[:n_sub]
-	return subj_files_sub
+	return subj_files_sub, n_sub
 
 
 def load_cifti(cifti_fp):
@@ -43,8 +58,8 @@ def load_gifti(gifti_fps):
 	return gifti_LR
 
 
-def load_data_and_stack(n_sub, input_type):
-	subj_files = get_subj_file_list(n_sub, input_type)
+def load_data_and_stack(n_sub, input_type, global_signal, task_or_rest='rest'):
+	subj_files, n_sub = get_subj_file_list(n_sub, input_type, global_signal, task_or_rest)
 	group_data = pre_allocate_array(subj_files[0], input_type, n_sub)
 	row_indx = 0
 	for subj_file in subj_files:
@@ -58,7 +73,9 @@ def load_data_and_stack(n_sub, input_type):
 			hdr = subj_file
 		group_data[row_indx:(row_indx+n_time), :] = subj_data
 		row_indx += n_time
-	return group_data, hdr
+	zero_mask = np.std(group_data, axis=0) > 0
+	zero_mask_indx = np.where(zero_mask)[0]
+	return group_data[:, zero_mask], hdr, zero_mask_indx 
 
 
 def pull_cifti_data(cifti_obj):
@@ -96,12 +113,14 @@ def write_to_cifti(result, hdr, n_rows, script_name):
 	nb.save(cifti_out, f'{script_name}_results.dtseries.nii')
 
 
-def write_to_gifti(result, giftis, script_name):
+def write_to_gifti(result, giftis, script_name, zero_mask):
 	example_array_L = giftis[0].darrays[0]
 	example_array_R = giftis[1].darrays[0]		
 	L_shape = len(giftis[0].agg_data()[0])
-	L_result = result[:, :L_shape]
-	R_result = result[:, L_shape:]
+	padded_result = np.zeros([result.shape[0], L_shape*2])
+	padded_result[:, zero_mask] = result
+	L_result = padded_result[:, :L_shape]
+	R_result = padded_result[:, L_shape:]
 	L_gifti_image = GiftiImage(meta=giftis[0].meta)
 	R_gifti_image = GiftiImage(meta=giftis[1].meta)
 	for row_L, row_R in zip(L_result, R_result):

@@ -129,20 +129,25 @@ def run_lag_projection(input_data, tr=0.72, lag=6, lag_lim=4):
                                                      zero_lag_corr)
     return uw_lag_proj, w_lag_proj, cov_mat
 
-def run_main(input_type, n_sub):
-    group_data, hdr = load_data_and_stack(n_sub, input_type)
+def run_main(input_type, global_signal, n_sub):
+    group_data, hdr = load_data_and_stack(n_sub, input_type, global_signal)
     lag_results = run_lag_projection(group_data)
     write_results(input_type, lag_results, 
-                  lag_results[0][np.newaxis, :], hdr)
+                  lag_results[0][np.newaxis, :], hdr,
+                  global_signal)
 
 
-def write_results(input_type, lag_results, lag_projection, hdr):
+def write_results(input_type, lag_results, lag_projection, hdr, global_signal):
+    if global_signal:
+        analysis_str = 'lag_projection_gs_'
+    else:
+        analysis_str = 'lag_projection'
     pickle.dump(lag_results, 
-            open(f'lag_projection_results.pkl', 'wb'))
+            open(f'{analysis_str}_results.pkl', 'wb'))
     if input_type == 'cifti':
-        write_to_cifti(lag_projection, hdr, n_comps, 'lag')
+        write_to_cifti(lag_projection, hdr, n_comps, analysis_str)
     elif input_type == 'gifti':
-        write_to_gifti(lag_projection, hdr, 'lag')
+        write_to_gifti(lag_projection, hdr, analysis_str)
 
 
 if __name__ == '__main__':
@@ -155,10 +160,16 @@ if __name__ == '__main__':
                         required=False,
                         default='gifti',
                         type=str)
+    parser.add_argument('-g', '--gs_regress',
+                        help='Whether to use global signal regressed data',
+                        default=0,
+                        required=False,
+                        type=bool)
     parser.add_argument('-s', '--n_sub',
                         help='Number of subjects to use',
                         default=None,
                         type=int)
     args_dict = vars(parser.parse_args())
-    run_main(args_dict['input_type'], args_dict['n_sub'])
+    run_main(args_dict['input_type'], args_dict['gs_regress'],
+             args_dict['n_sub'])
 
