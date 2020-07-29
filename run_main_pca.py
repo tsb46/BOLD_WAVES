@@ -33,9 +33,9 @@ def pca(input_data, n_comps):
 
 def run_main(n_comps, n_sub, global_signal, sparse, 
              task_or_rest, input_type, pca_type):
-    group_data, hdr, zero_mask = load_data_and_stack(n_sub, input_type, 
-                                                     global_signal, 
-                                                     task_or_rest)
+    group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, 
+                                                        global_signal, 
+                                                        task_or_rest)
     # Normalize data
     group_data = zscore(group_data)
     if pca_type == 'complex':
@@ -45,10 +45,11 @@ def run_main(n_comps, n_sub, global_signal, sparse,
     else:
         raise Exception('Only PCA types available are: "real" or "complex"')
     if sparse and pca_type == 'real':
-        rotated_weights = sparse_pca(group_data, n_comps)
-        write_to_gifti(rotated_weights, hdr, 'pca_sparse', zero_mask)
+        sparse_weights = sparse_pca(group_data, n_comps)
+        write_to_gifti(sparse_weights, hdr, 'pca_sparse', zero_mask)
     else:
         pca_output = pca(group_data, n_comps)
+        import pdb; pdb.set_trace()
         write_results(input_type, pca_output, 
                       pca_output['Va'], n_comps, 
                       hdr, pca_type, global_signal, 
@@ -104,7 +105,7 @@ if __name__ == '__main__':
                         default=0,
                         required=False,
                         type=bool)
-    parser.add_argument('-r', '--sparse',
+    parser.add_argument('-s', '--sparse',
                         help='Whether to use sparse PCA',
                         default=0,
                         required=False,
@@ -126,6 +127,7 @@ if __name__ == '__main__':
                         help='Calculate complex or real PCA',
                         default='real',
                         type=str)
+    
     args_dict = vars(parser.parse_args())
     run_main(args_dict['n_comps'], args_dict['n_sub'], 
              args_dict['gs_regress'], args_dict['sparse'], 

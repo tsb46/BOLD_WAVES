@@ -6,6 +6,7 @@ from glob import glob
 from itertools import groupby 
 from nibabel import FileHolder, Cifti2Image, GiftiImage 
 from nibabel.gifti.gifti import GiftiDataArray
+from scipy.stats import gamma
 
 
 def assign_gifti_files_to_nested_list(gifti_files):
@@ -13,6 +14,43 @@ def assign_gifti_files_to_nested_list(gifti_files):
 	temp = sorted(gifti_files, key = id_extract) 
 	nested_gifti_list = [list(subj_id) for i, subj_id in groupby(temp, id_extract)] 
 	return nested_gifti_list
+	
+
+def construct_task_blocks(scan_len, timings, durs, tr):
+	task_blocks = np.zeros(scan_len)
+	for event, dur in zip(timings, durs):
+		tr_event = np.int(np.floor(event/tr) - 1)
+		tr_dur = np.int(np.floor(dur))
+		task_blocks[tr_event:(tr_event+tr_dur)] = 1
+	return task_blocks
+
+
+def construct_task_regressors(scan_len, n_subs, hrf_t=30, tr=0.72):
+	# We're modeling all task events as the same event,  
+	# in this case, the task timeing of LR and RL encoding scans are the same
+	LR_evs_fps = sorted(glob('data/task_LR_ev/*.txt'))
+	LR_evs = [np.loadtxt(fp) for fp in LR_evs_fps]
+	LR_start = [LR_ev[0] for LR_ev in LR_evs]
+	LR_dur = [LR_ev[1] for LR_ev in LR_evs]
+	LR_blocks = construct_task_blocks(scan_len, LR_start, LR_dur, tr)
+	hrf = double_gamma_hrf(hrf_t, tr)
+	LR_convolved = convolve_hrf_events(hrf, LR_blocks)
+	return np.tile(LR_blocks, n_subs), np.tile(LR_convolved, n_subs)
+
+
+def convolve_hrf_events(hrf, blocks):
+	n_drop = len(hrf) - 1
+	convolved_events = np.convolve(blocks, hrf)
+	return convolved_events[:-n_drop]
+
+
+def double_gamma_hrf(t, tr):
+	# http://www.jarrodmillman.com/rcsds/lectures/convolution_background.html
+	n_steps = np.arange(0, t, tr)
+	gamma_peak = gamma.pdf(n_steps, 6)
+	gamma_under = gamma.pdf(n_steps, 12)
+	gamma_double = gamma_peak - 0.35 * gamma_under
+	return gamma_double / np.max(gamma_double) * 0.6
 
 
 def get_subj_file_list(n_sub, input_type, global_signal, task_or_rest):
@@ -60,7 +98,7 @@ def load_gifti(gifti_fps):
 
 def load_data_and_stack(n_sub, input_type, global_signal, task_or_rest='rest'):
 	subj_files, n_sub = get_subj_file_list(n_sub, input_type, global_signal, task_or_rest)
-	group_data = pre_allocate_array(subj_files[0], input_type, n_sub)
+	group_data, n_rows = pre_allocate_array(subj_files[0], input_type, n_sub)
 	row_indx = 0
 	for subj_file in subj_files:
 		print(subj_file)
@@ -75,7 +113,11 @@ def load_data_and_stack(n_sub, input_type, global_signal, task_or_rest='rest'):
 		row_indx += n_time
 	zero_mask = np.std(group_data, axis=0) > 0
 	zero_mask_indx = np.where(zero_mask)[0]
-	return group_data[:, zero_mask], hdr, zero_mask_indx 
+	if task_or_rest == 'task':
+		regressor = construct_task_regressors(n_rows, n_sub)
+	else :
+		regressor = None
+	return group_data[:, zero_mask], hdr, zero_mask_indx, regressor
 
 
 def pull_cifti_data(cifti_obj):
@@ -102,7 +144,7 @@ def pre_allocate_array(subj_file, input_type, n_sub):
 		subj, _ = pull_gifti_data(subj)
 	n_rows, n_cols = subj.shape
 	group_array = np.empty((n_rows*n_sub, n_cols), np.float64)
-	return group_array
+	return group_array, n_rows
 
 
 def write_to_cifti(result, hdr, n_rows, script_name):
