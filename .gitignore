@@ -1,7 +1,11 @@
 # directories
-/data/
-/mapalign/
 /results/
+
+# data directory
+/data/rest/
+/data/task/
+/data/tmp/
+
 
 # environment
 .env
@@ -9,9 +13,8 @@
 #pycache
 **/__pycache__
 
-#Results files: .nii, .pkl
+#Results files: .pkl
 *.pkl
-*.nii
 
 # Keep Glasser Parcellation file
 !templates/Glasser_Parcellation_210.32k_fs_LR.dlabel.nii 
