@@ -5,7 +5,6 @@ import numpy as np
 import pickle
 
 from pywt import swt
-from scipy.signal import hilbert
 from scipy.stats import zscore
 from utils.utils import load_data_and_stack, write_to_cifti, \
 write_to_gifti
@@ -21,14 +20,16 @@ def multires_pca(wavelet_bank, decomp_level, n_comps):
     return pca_output_grp
 
 
-def run_main(input_dir, n_comps, n_sub, global_signal, 
+def run_main(n_comps, n_sub, global_signal, 
              task_or_rest, input_type, decomp_level=5):
     group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, 
                                                         global_signal, 
-                                                        task_or_rest)
+                                                        task_or_rest,
+                                                        multi_res=1)
     # Normalize data
     group_data = zscore(group_data)
     wavelet_bank = wavelet_decomp(group_data, decomp_level)
+    import pdb; pdb.set_trace()
     pca_output_grp = multires_pca(wavelet_bank, decomp_level, n_comps)
     write_results(input_type, wavelet_bank[0], 
                   pca_output_grp, n_comps, 
@@ -68,10 +69,6 @@ if __name__ == '__main__':
     parser.add_argument('-n', '--n_comps',
                         help='<Required> Number of components from PCA',
                         required=True,
-                        type=int)
-    parser.add_argument('-s', '--n_sub',
-                        help='Number of subjects to use',
-                        default=None,
                         type=int)
     parser.add_argument('-s', '--n_sub',
                         help='Number of subjects to use',

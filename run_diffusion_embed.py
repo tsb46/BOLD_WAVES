@@ -12,31 +12,33 @@ from utils.utils import load_data_and_stack, write_to_cifti, write_to_gifti
 
 
 def compute_affinity_matrix(group_data, perc_thresh):
-    # Use normalized angular distance
+    # Use linear/cosine kernel - equivalent in normalized data
     affinity_mat = cosine_similarity(group_data.T)
-    # github.com/MICA-MNI/BrainSpace/blob/master/brainspace/gradient/kernels.py
-    affinity_mat = 1 - np.arccos(affinity_mat, affinity_mat)/np.pi
-    row_prct = np.percentile(affinity_mat, perc_thresh, axis=1)
-    mask = np.array([row < prct for row, prct in zip(affinity_mat, row_prct)])
-    affinity_mat[mask] = 0
+    if perc_thresh is not None:
+        row_prct = np.percentile(affinity_mat, perc_thresh, axis=1)
+        mask = np.array([row < prct for row, prct in zip(affinity_mat, row_prct)])
+        affinity_mat[mask] = 0
+    affinity_mat[affinity_mat<0] = 0
     return affinity_mat
 
 
 def diffusion_embed(affinity_mat, n_comps):
-    spec_emb = SpectralEmbedding(n_components=2, affinity='precomputed')
+    spec_emb = SpectralEmbedding(n_components=n_comps, affinity='precomputed')
     spec_emb.fit(affinity_mat)
     embed = spec_emb.embedding_
     return embed.T
 
 
 def run_main(n_sub, n_comps, global_signal, input_type, perc_thresh):
-    group_data, hdr = load_data_and_stack(n_sub, input_type, global_signal)
+    group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, global_signal)
+    group_data = zscore(group_data)
     affinity_mat = compute_affinity_matrix(group_data, perc_thresh)
+    import pdb; pdb.set_trace()
     embed = diffusion_embed(affinity_mat, n_comps)
-    write_results(embed, hdr, input_type, global_signal)
+    write_results(embed, hdr, input_type, global_signal, zero_mask)
 
 
-def write_results(emb_weights, hdr, input_type, global_signal):
+def write_results(emb_weights, hdr, input_type, global_signal, zero_mask):
     if global_signal:
         analysis_str = 'diffusion_embedding_gs'
     else:
@@ -46,7 +48,7 @@ def write_results(emb_weights, hdr, input_type, global_signal):
         write_to_cifti(emb_weights, hdr, 
                        emb_weights.shape[0], analysis_str)
     elif input_type == 'gifti':
-        write_to_gifti(emb_weights, hdr, analysis_str)
+        write_to_gifti(emb_weights, hdr, analysis_str, zero_mask)
 
 
 if __name__ == '__main__':
@@ -75,7 +77,7 @@ if __name__ == '__main__':
                         type=str)
     parser.add_argument('-p', '--percentile_threshold',
                         help='Set percentile threshold for thresholding corr matrix',
-                        default=90,
+                        default=None,
                         type=float)
     args_dict = vars(parser.parse_args())
     run_main(args_dict['n_sub'], args_dict['n_comps'], args_dict['gs_regress'],

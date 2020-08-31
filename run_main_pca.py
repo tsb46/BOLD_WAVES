@@ -4,11 +4,12 @@ import nibabel as nb
 import numpy as np
 import pickle
 
-from utils.utils import load_data_and_stack, write_to_cifti, \
-write_to_gifti
+from numpy.linalg import pinv
 from scipy.signal import hilbert
 from scipy.stats import zscore
-from sklearn.decomposition import MiniBatchSparsePCA
+from utils.utils import load_data_and_stack, write_to_cifti, \
+write_to_gifti
+from utils.rotation import varimax
 
 
 def hilbert_transform(input_data):
@@ -31,55 +32,59 @@ def pca(input_data, n_comps):
 
 
 
-def run_main(n_comps, n_sub, global_signal, sparse, 
-             task_or_rest, input_type, pca_type):
+def run_main(n_comps, n_sub, global_signal, rotate, 
+             task, input_type, pca_type, pca_mode):
     group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, 
                                                         global_signal, 
-                                                        task_or_rest)
+                                                        task)
     # Normalize data
-    group_data = zscore(group_data)
+    if pca_mode == 's':
+        group_data = zscore(group_data)
+    elif pca_mode == 't':
+        group_data = zscore(group_data.T).T
+
     if pca_type == 'complex':
         group_data = hilbert_transform(group_data)
-    elif pca_type == 'real':
-        pass
-    else:
-        raise Exception('Only PCA types available are: "real" or "complex"')
-    if sparse and pca_type == 'real':
-        sparse_weights = sparse_pca(group_data, n_comps)
-        write_to_gifti(sparse_weights, hdr, 'pca_sparse', zero_mask)
-    else:
-        pca_output = pca(group_data, n_comps)
-        import pdb; pdb.set_trace()
-        write_results(input_type, pca_output, 
-                      pca_output['Va'], n_comps, 
-                      hdr, pca_type, global_signal, 
-                      zero_mask)
+    pca_output = pca(group_data, n_comps)
+
+    if rotate is not None and pca_type == 'real':
+        pca_output = rotation(pca_output, group_data, rotate, pca_type)
+    write_results(input_type, pca_output, rotate,
+                  pca_output['Va'], n_comps, 
+                  hdr, pca_type, global_signal, 
+                  zero_mask, task)
 
 
-def sparse_pca(group_data, n_comps, batch_n=100, alpha=1.2):
-    sparse_pca = MiniBatchSparsePCA(n_components=n_comps, 
-                                    batch_size=batch_n, alpha=alpha)
-    sparse_pca.fit(group_data)
-    return sparse_pca.components_
+def rotation(pca_output, group_data, rotation, pca_type):
+    rotated_weights, _ = varimax(pca_output['Va'].T, normalize=True)
+    projected_scores = group_data @ pinv(rotated_weights).T
+    pca_output['Va'] = rotated_weights.T
+    pca_output['U'] = projected_scores
+    return pca_output
 
 
-def write_results(input_type, pca_output, comp_weights, 
+def write_results(input_type, pca_output, rotate, comp_weights, 
                   n_comps, hdr, pca_type, global_signal,
-                  zero_mask):
+                  zero_mask, task):
     if global_signal:
-        analysis_str = 'pca_gs'
+        analysis_str = 'pca_gs_' + task
     else:
-        analysis_str = 'pca'
+        analysis_str = 'pca_' + task
+    if rotate:
+        analysis_str += f'_{rotate}'
     if pca_type == 'complex':
         analysis_str += '_complex'
         pickle.dump(pca_output, open(f'{analysis_str}_results.pkl', 'wb'))
-        comp_weights_abs = np.abs(comp_weights)
+        comp_weights_real = np.real(comp_weights)
+        comp_weights_imag = np.imag(comp_weights)
         comp_weights_ang = np.angle(comp_weights)
         if input_type == 'cifti':
-            write_to_cifti(comp_weights_abs, hdr, n_comps, f'{analysis_str}_abs')
+            write_to_cifti(comp_weights_real, hdr, n_comps, f'{analysis_str}_real')
+            write_to_cifti(comp_weights_imag, hdr, n_comps, f'{analysis_str}_imag')
             write_to_cifti(comp_weights_ang, hdr, n_comps, f'{analysis_str}_ang')
         elif input_type == 'gifti':
-            write_to_gifti(comp_weights_abs, hdr, f'{analysis_str}_abs', zero_mask)
+            write_to_gifti(comp_weights_real, hdr, f'{analysis_str}_real', zero_mask)
+            write_to_gifti(comp_weights_imag, hdr, f'{analysis_str}_imag', zero_mask)
             write_to_gifti(comp_weights_ang, hdr, f'{analysis_str}_ang', zero_mask)
     elif pca_type == 'real':
         pickle.dump(pca_output, open(f'{analysis_str}_results.pkl', 'wb'))
@@ -105,14 +110,15 @@ if __name__ == '__main__':
                         default=0,
                         required=False,
                         type=bool)
-    parser.add_argument('-s', '--sparse',
-                        help='Whether to use sparse PCA',
-                        default=0,
+    parser.add_argument('-r', '--rotate',
+                        help='Whether to varimax rotate pca weights',
+                        default=None,
                         required=False,
-                        type=bool)
-    parser.add_argument('-t', '--task_or_rest',
-                        help='Whether to apply to task or rest data',
-                        choices=['rest', 'task'],
+                        choices=['varimax'],
+                        type=str)
+    parser.add_argument('-t', '--task',
+                        help='What task to apply PCA to',
+                        choices=['rest', 'wm', 'rel'],
                         default='rest',
                         required=False,
                         type=str)
@@ -127,10 +133,15 @@ if __name__ == '__main__':
                         help='Calculate complex or real PCA',
                         default='real',
                         type=str)
+    parser.add_argument('-m', '--pca_mode',
+                        help='Whether to normalize along the columns (s) or rows (t)',
+                        default='s',
+                        choices=['t','s'],
+                        type=str)
     
     args_dict = vars(parser.parse_args())
     run_main(args_dict['n_comps'], args_dict['n_sub'], 
-             args_dict['gs_regress'], args_dict['sparse'], 
-             args_dict['task_or_rest'], args_dict['input_type'], 
-             args_dict['pca_type'])
+             args_dict['gs_regress'], args_dict['rotate'], 
+             args_dict['task'], args_dict['input_type'], 
+             args_dict['pca_type'], args_dict['pca_mode'])
 

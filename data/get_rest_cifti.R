@@ -6,7 +6,7 @@ make_aws_call(path_to_file = "/",
 subject_data<- read.csv('subject_80_ids.csv',header = TRUE)
 subjects <- subject_data$Subject
 
-output_dir = 'test/raw'
+output_dir = 'rest/raw'
 
 #ICA-FIX data
 for (n in 1:length(subjects)) {

@@ -25,26 +25,31 @@ def compute_gs_map(global_signal, group_data):
 def run_main(n_sub, input_type, n_samples=200, window=15):
 	# Average window around peak
 	group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, False)
+	group_data_gs, _, _, _ = load_data_and_stack(n_sub, input_type, True)
 	global_signal = compute_global_signal(group_data)
 	gs_peaks = find_comp_peaks(global_signal)
 	gs_selected_peaks = select_peaks(gs_peaks, window, group_data.shape[0], n_samples)
 	peak_avg = average_peak_window(gs_selected_peaks, group_data, window)
+	peak_avg_gs = average_peak_window(gs_selected_peaks, group_data_gs, window)
 	gs_map = compute_gs_map(global_signal, group_data)
-	write_results(peak_avg, global_signal, gs_map[np.newaxis, :], 
+	write_results(peak_avg, peak_avg_gs, global_signal, gs_map[np.newaxis, :], 
 	              hdr, input_type, zero_mask)
 
 
-def write_results(peak_avg, global_signal, gs_map, 
+def write_results(peak_avg, peak_avg_gs, global_signal, gs_map, 
                   hdr, input_type, zero_mask):
 	analysis_str = f'gs'
 	pickle.dump(global_signal, open(f'{analysis_str}_results.pkl', 'wb'))
 	if input_type == 'cifti':
 		write_to_cifti(peak_avg, hdr, 
 					   peak_avg.shape[0], analysis_str+'_peak_avg')
+		write_to_cifti(peak_avg_gs, hdr, 
+					   peak_avg.shape[0], analysis_str+'_peak_avg_gsremoved')
 		write_to_cifti(gs_map, hdr, 
 					   gs_map.shape[0], analysis_str+'_map')
 	elif input_type == 'gifti':
 		write_to_gifti(peak_avg, hdr, analysis_str+'_peak_avg', zero_mask)
+		write_to_gifti(peak_avg_gs, hdr, analysis_str+'_peak_avg_gsremoved', zero_mask)
 		write_to_gifti(gs_map, hdr, analysis_str+'_map', zero_mask)
 
 

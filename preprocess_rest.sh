@@ -5,6 +5,7 @@ mkdir -p data/rest/proc_1_smooth
 mkdir -p data/rest/proc_2_norm_filter
 mkdir -p data/rest/proc_3_surf_resamp
 mkdir -p data/rest/proc_4_gs_regress
+mkdir -p data/rest/proc_2_surf_resamp
 
 # Smooth 
 echo "smoothing..." 
@@ -15,6 +16,11 @@ preprocess/norm_filter.sh data/rest/proc_1_smooth data/rest/proc_2_norm_filter
 # Resample to fsaverage4
 echo "resampling..."
 preprocess/fsaverage_resample.sh data/rest/proc_2_norm_filter data/rest/proc_3_surf_resamp
-# # Remove global signal
+# Remove global signal
 echo "removing global signal..."
 preprocess/global_signal_regress.sh data/rest/proc_3_surf_resamp data/rest/proc_4_gs_regress
+
+
+# Resample smoothed data to fsaverage4 - for wavelet decomposition 
+echo "resampling...again..."
+preprocess/fsaverage_resample.sh data/rest/proc_1_smooth data/rest/proc_2_surf_resamp

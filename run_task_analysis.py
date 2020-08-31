@@ -29,19 +29,19 @@ def compute_task_map(task_regressor, group_data):
 	return np.array(beta_map)
 
 
-def run_main(n_sub, input_type, n_samples=200, window=15):
+def run_main(n_sub, input_type, task, n_samples=200, window=15):
 	# Average window around peak
 	group_data, hdr, \
-	zero_mask, regressors = load_data_and_stack(n_sub, input_type, False, 'task')
+	zero_mask, regressors = load_data_and_stack(n_sub, input_type, False, task)
 	beta_map = compute_task_map(regressors[1], group_data)
 	block_avg = average_task_block(regressors[0], group_data)
 	write_results(block_avg, beta_map[np.newaxis, :], regressors,
-	              hdr, input_type, zero_mask)
+	              hdr, input_type, zero_mask, task)
 
 
 def write_results(block_avg, task_map, regressors,
-                  hdr, input_type, zero_mask):
-	analysis_str = 'task'
+                  hdr, input_type, zero_mask, task):
+	analysis_str = 'task_' + task
 	pickle.dump([regressors], open(f'{analysis_str}_results.pkl', 'wb'))
 	if input_type == 'cifti':
 		write_to_cifti(block_avg, hdr, 
@@ -56,12 +56,17 @@ def write_results(block_avg, task_map, regressors,
 if __name__ == '__main__':
 	"""Run main analysis"""
 	parser = argparse.ArgumentParser(description='Run GLM and peak averaging task analysis')
+	parser.add_argument('-t', '--task',
+                        help='What task to apply PCA to',
+                        choices=['wm', 'rel'],
+                        required=True,
+                        type=str)
 	parser.add_argument('-s', '--n_sub',
 						help='number of subjects',
 						required=False,
 						default=None,
 						type=int)
-	parser.add_argument('-t', '--input_type',
+	parser.add_argument('-i', '--input_type',
 						help='Whether to load resampled metric .gii files or '
 						'full cifti files',
 						choices=['cifti', 'gifti'],
@@ -69,6 +74,6 @@ if __name__ == '__main__':
 						default='gifti',
 						type=str)
 	args_dict = vars(parser.parse_args())
-	run_main(args_dict['n_sub'], args_dict['input_type'])
+	run_main(args_dict['n_sub'], args_dict['input_type'], args_dict['task'])
 
 

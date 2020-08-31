@@ -192,11 +192,11 @@ def run_qpp_iteration(perm, data, window_length, trs, initial_trs,
 
 
 def run_main(n_sub, global_signal, input_type, window_length, parallel_cores):
-    group_data, hdr = load_data_and_stack(n_sub, input_type, global_signal)
+    group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, global_signal)
     qpp_results = detect_qpp(group_data.T, window_length, 
                              n_sub, parallel_cores)
     write_results(input_type, qpp_results, qpp_results[0].T, 
-                  hdr, global_signal)
+                  hdr, global_signal, zero_mask)
 
 
 def smooth(x):
@@ -212,7 +212,7 @@ def smooth(x):
     )
 
 
-def write_results(input_type, qpp_results, segment, hdr, global_signal):
+def write_results(input_type, qpp_results, segment, hdr, global_signal, zero_mask):
     if global_signal:
         analysis_str = 'qpp_gs'
     else:
@@ -221,7 +221,7 @@ def write_results(input_type, qpp_results, segment, hdr, global_signal):
     if input_type == 'cifti':
         write_to_cifti(segment, hdr, n_comps, analysis_str)
     elif input_type == 'gifti':
-        write_to_gifti(segment, hdr, analysis_str)
+        write_to_gifti(segment, hdr, analysis_str, zero_mask)
 
 
 if __name__ == '__main__':

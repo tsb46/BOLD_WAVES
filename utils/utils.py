@@ -1,12 +1,14 @@
+import matplotlib.pyplot as plt
 import nibabel as nb 
 import numpy as np
 import os
 
 from glob import glob
 from itertools import groupby 
+from matplotlib.patches import Rectangle
 from nibabel import FileHolder, Cifti2Image, GiftiImage 
 from nibabel.gifti.gifti import GiftiDataArray
-from scipy.stats import gamma
+from scipy.stats import gamma, zscore
 
 
 def assign_gifti_files_to_nested_list(gifti_files):
@@ -25,13 +27,21 @@ def construct_task_blocks(scan_len, timings, durs, tr):
 	return task_blocks
 
 
-def construct_task_regressors(scan_len, n_subs, hrf_t=30, tr=0.72):
+def construct_task_regressors(scan_len, n_subs, task, hrf_t=30, tr=0.72):
 	# We're modeling all task events as the same event,  
-	# in this case, the task timeing of LR and RL encoding scans are the same
-	LR_evs_fps = sorted(glob('data/task_LR_ev/*.txt'))
-	LR_evs = [np.loadtxt(fp) for fp in LR_evs_fps]
-	LR_start = [LR_ev[0] for LR_ev in LR_evs]
-	LR_dur = [LR_ev[1] for LR_ev in LR_evs]
+	# in this case, the task timing of LR and RL encoding scans are the same
+	if task == 'wm':
+		LR_evs_fps = sorted(glob('data/task_LR_ev/wm/*.txt'))
+		LR_evs = [np.loadtxt(fp) for fp in LR_evs_fps]
+		LR_start = [LR_ev[0] for LR_ev in LR_evs]
+		LR_dur = [LR_ev[1] for LR_ev in LR_evs]
+	elif task == 'rel':
+		LR_evs_fps = sorted(glob('data/task_LR_ev/rel/*.txt'))
+		LR_evs = [np.loadtxt(fp) for fp in LR_evs_fps]
+		LR_start = [LR_ev[0] for LR_ev in LR_evs[0]] + \
+		[LR_ev[0] for LR_ev in LR_evs[1]] 
+		LR_dur = [LR_ev[1] for LR_ev in LR_evs[0]] + \
+		[LR_ev[1] for LR_ev in LR_evs[1]] 
 	LR_blocks = construct_task_blocks(scan_len, LR_start, LR_dur, tr)
 	hrf = double_gamma_hrf(hrf_t, tr)
 	LR_convolved = convolve_hrf_events(hrf, LR_blocks)
@@ -53,26 +63,36 @@ def double_gamma_hrf(t, tr):
 	return gamma_double / np.max(gamma_double) * 0.6
 
 
-def get_subj_file_list(n_sub, input_type, global_signal, task_or_rest):
+def get_subj_file_list(n_sub, input_type, global_signal, 
+                       task, multi_res):
 	if input_type == 'cifti':
 		if global_signal:
 			raise Exception('Global signal regression was '
 			                'only conducted for gifti processed files')
-		if task_or_rest == 'rest':
+		if task == 'rest':
 			subj_files = sorted(glob('data/rest/proc_2_norm_filter/*dtseries.nii'))
 		else:
-			subj_files = sorted(glob('data/task/proc_2_norm_filter/*dtseries.nii'))
+			if task == 'wm':
+				subj_files = sorted(glob('data/task/wm/proc_2_norm_filter/*dtseries.nii'))
+			elif task == 'rel':
+				subj_files = sorted(glob('data/task/rel/proc_2_norm_filter/*dtseries.nii'))
 	elif input_type == 'gifti':
 		if global_signal:
-			if task_or_rest == 'rest':
+			if task == 'rest':
 				subj_files = glob('data/rest/proc_4_gs_regress/*.gii')
 			else:
-				subj_files = glob('data/task/proc_4_gs_regress/*.gii')
+				raise Exception('Global signal regression was not performed for task data')
 		else:
-			if task_or_rest == 'rest':
-				subj_files = glob('data/rest/proc_3_surf_resamp/*.gii')
+			if task == 'rest':
+				if multi_res:
+					subj_files = glob('data/rest/proc_2_surf_resamp/*.gii')
+				else:
+					subj_files = glob('data/rest/proc_3_surf_resamp/*.gii')
 			else:
-				subj_files = glob('data/task/proc_3_surf_resamp/*.gii')
+				if task == 'wm':
+					subj_files = glob('data/task/wm/proc_3_surf_resamp/*.gii')
+				elif task == 'rel':
+					subj_files = glob('data/task/rel/proc_3_surf_resamp/*.gii')
 		subj_files = assign_gifti_files_to_nested_list(subj_files)
 	if len(subj_files) < 1:
 		raise Exception('No files found in file path')
@@ -96,8 +116,10 @@ def load_gifti(gifti_fps):
 	return gifti_LR
 
 
-def load_data_and_stack(n_sub, input_type, global_signal, task_or_rest='rest'):
-	subj_files, n_sub = get_subj_file_list(n_sub, input_type, global_signal, task_or_rest)
+def load_data_and_stack(n_sub, input_type, global_signal, 
+                        task='rest', multi_res=False):
+	subj_files, n_sub = get_subj_file_list(n_sub, input_type, global_signal, 
+	                                       task, multi_res)
 	group_data, n_rows = pre_allocate_array(subj_files[0], input_type, n_sub)
 	row_indx = 0
 	for subj_file in subj_files:
@@ -107,18 +129,43 @@ def load_data_and_stack(n_sub, input_type, global_signal, task_or_rest='rest'):
 			hdr, subj_data, n_time = pull_cifti_data(subj_file)
 		elif input_type == 'gifti':
 			subj_file = load_gifti(subj_file)
-			subj_data, n_time = pull_gifti_data(subj_file)
+			subj_data, n_time, _, _ = pull_gifti_data(subj_file)
+			if multi_res:
+				# Multi-resolution data has not been previously normalized - do this
+				# before concatenation
+				subj_data = zscore(subj_data)
 			hdr = subj_file
 		group_data[row_indx:(row_indx+n_time), :] = subj_data
 		row_indx += n_time
+	# Construct mask of vertices with all 0s
 	zero_mask = np.std(group_data, axis=0) > 0
 	zero_mask_indx = np.where(zero_mask)[0]
-	if task_or_rest == 'task':
-		regressor = construct_task_regressors(n_rows, n_sub)
-	else :
+	if task != 'rest':
+		regressor = construct_task_regressors(n_rows, n_sub, task)
+	else:
 		regressor = None
 	return group_data[:, zero_mask], hdr, zero_mask_indx, regressor
 
+
+def plot_sorted_corr_mat(corr_mat, cluster_assignments):
+	# Create sorting index from factor assignments
+	sort_indx = np.argsort(factor_assignments)
+	sorted_vals = np.sort(factor_assignments)
+	# Sort Distance Matrix
+	sortedmat = [[dist_mat[i][j] for j in sort_indx] for i in sort_indx]
+	# Plot Distance Matrix
+	fig, ax = plt.subplots(figsize=(10,7))
+	c = plt.pcolormesh(sortedmat, cmap='seismic')
+	fig.colorbar(c, ax=ax)
+	# Plot rectangular patches along diagnol to indicate factor assignments
+	for i in np.unique(sorted_vals):
+		ind = np.where(sorted_vals == i)
+		mn = np.min(ind)
+		mx = np.max(ind)
+		sz=(mx-mn)+1
+		rect = Rectangle((mn,mn), sz, sz ,linewidth=1,edgecolor='r',facecolor='none')
+		ax.add_patch(rect)
+	plt.show()
 
 def pull_cifti_data(cifti_obj):
 	cifti_obj.set_data_dtype('<f4')
@@ -129,11 +176,14 @@ def pull_cifti_data(cifti_obj):
 
 
 def pull_gifti_data(giftis):
+	# LH and RH data are concatenated with LH first and RH second!
 	gifti_L_array = np.array(giftis[0].agg_data())
 	gifti_R_array = np.array(giftis[1].agg_data())
 	gifti_all = np.concatenate((gifti_L_array, gifti_R_array), axis=1)
 	n_time = gifti_all.shape[0]
-	return gifti_all, n_time
+	n_vert_L = gifti_L_array.shape[1]
+	n_vert_R = gifti_R_array.shape[1]
+	return gifti_all, n_time, n_vert_L, n_vert_R
 
 
 def pre_allocate_array(subj_file, input_type, n_sub):
@@ -141,7 +191,7 @@ def pre_allocate_array(subj_file, input_type, n_sub):
 		subj = load_cifti(subj_file)	
 	elif input_type == 'gifti':
 		subj = load_gifti(subj_file)
-		subj, _ = pull_gifti_data(subj)
+		subj, _, _, _ = pull_gifti_data(subj)
 	n_rows, n_cols = subj.shape
 	group_array = np.empty((n_rows*n_sub, n_cols), np.float64)
 	return group_array, n_rows
@@ -174,8 +224,8 @@ def write_to_gifti(result, giftis, script_name, zero_mask):
 		R_gifti_image.add_gifti_data_array(gifti_array_R)
 	nb.save(L_gifti_image, f'{script_name}.L.func.gii')
 	nb.save(R_gifti_image, f'{script_name}.R.func.gii')
-	# os.system(f'./merge_metric_resample.sh {script_name}.L.func.gii '
-	# 	f'{script_name}.R.func.gii {script_name}_results.dtseries.nii')
+	os.system(f'./utils/giftis_to_cifti.sh {script_name}.L.func.gii '
+	          f'{script_name}.R.func.gii {script_name}.dtseries.nii')
 
 
 

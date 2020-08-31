@@ -130,14 +130,16 @@ def run_lag_projection(input_data, tr=0.72, lag=6, lag_lim=4):
     return uw_lag_proj, w_lag_proj, cov_mat
 
 def run_main(input_type, global_signal, n_sub):
-    group_data, hdr = load_data_and_stack(n_sub, input_type, global_signal)
+    group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, 
+                                                        global_signal)
     lag_results = run_lag_projection(group_data)
     write_results(input_type, lag_results, 
                   lag_results[0][np.newaxis, :], hdr,
-                  global_signal)
+                  global_signal, zero_mask)
 
 
-def write_results(input_type, lag_results, lag_projection, hdr, global_signal):
+def write_results(input_type, lag_results, lag_projection, hdr, 
+                  global_signal, zero_mask):
     if global_signal:
         analysis_str = 'lag_projection_gs_'
     else:
@@ -147,7 +149,7 @@ def write_results(input_type, lag_results, lag_projection, hdr, global_signal):
     if input_type == 'cifti':
         write_to_cifti(lag_projection, hdr, n_comps, analysis_str)
     elif input_type == 'gifti':
-        write_to_gifti(lag_projection, hdr, analysis_str)
+        write_to_gifti(lag_projection, hdr, analysis_str, zero_mask)
 
 
 if __name__ == '__main__':
