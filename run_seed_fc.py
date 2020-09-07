@@ -1,5 +1,4 @@
 import argparse
-import nibabel as nb 
 import numpy as np
 import pickle
 
@@ -39,7 +38,6 @@ def compute_seed_ts(lh_vertices, rh_vertices, group_data, zero_mask, n_vert_L):
 
 
 def run_main(lh_vertices, rh_vertices, n_sub, global_signal, input_type):
-	# Average window around peak
 	if lh_vertices is None and rh_vertices is None:
 		raise Exception('Atleast one vertex index should be supplied')
 
@@ -68,7 +66,7 @@ def write_results(seed_ts, fc_map, global_signal, hdr, input_type, zero_mask):
 		write_to_cifti(fc_map, hdr, 
 					   fc_map.shape[0], analysis_str)
 	elif input_type == 'gifti':
-		write_to_gifti(fc_map, hdr, analysis_str, zero_mask)
+		write_to_gifti(fc_map[np.newaxis, :], hdr, analysis_str, zero_mask)
 
 
 if __name__ == '__main__':

@@ -8,14 +8,13 @@ import pickle
 from utils.utils import load_data_and_stack, write_to_cifti, \
 write_to_gifti
 from utils.rotation import structured_varimax
-from utils.reconstruct import reconstruct_mssa_comps
 from scipy.stats import zscore
-from scipy.linalg import hankel
+from scipy.linalg import hankel, toeplitz
 from run_main_pca import pca
 
 
 def run_main(n_comps, n_sub, rotate, global_signal, task_or_rest, input_type, 
-             reconstruct_n, window=30, n_svd_comps=200):
+             reconstruct_n, window, n_svd_comps=200):
     group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, 
                                                         global_signal, 
                                                         task_or_rest)
@@ -34,14 +33,13 @@ def run_main(n_comps, n_sub, rotate, global_signal, task_or_rest, input_type,
                                                  pc_comps,
                                                  group_data)
     if reconstruct_n is not None:
-        recon_comps = reconstuct_components2(time_delay_pca['U'], 
+        recon_comps = reconstuct_components(time_delay_pca['U'], 
                                             time_delay_pca['Va'],
                                             window, reconstruct_n,
                                             n_svd_comps, 
                                             group_data.shape[0])
-
         # Project back onto original time series
-        rc_comp = recon_comps @ pca_output['Va']
+        rc_comp = zscore(recon_comps)@np.diagflat(pca_output['s'])@pca_output['Va']
         write_to_gifti(rc_comp, hdr, f'mssa_recon_comp', 
                        zero_mask)
     write_results(input_type, time_delay_pca, 
@@ -49,33 +47,15 @@ def run_main(n_comps, n_sub, rotate, global_signal, task_or_rest, input_type,
                   hdr, global_signal, zero_mask)
 
 
-def reconstuct_components(U, Va, W, recon_n, n_ts):
-# Borrowed from:
+def reconstuct_components(U, Va, W, recon_n, n_ts, N):
     ts_len = U.shape[0]
     RCs = []
     RC = np.zeros((ts_len, n_ts, len(recon_n)))
     for n in recon_n:
-        U_rev = time_delay_matrix(U[:,n], W, True)   
+        U_rev = time_delay_matrix(U[:,n][:, np.newaxis], W, True)   
         indx=0
         for t in range(n_ts):
             RC[:,t,n] = (U_rev @ Va[n, indx:(indx+W)])/W
-            indx+= W
-    return RC.sum(axis=2)
-
-
-def reconstuct_components2(U, Va, W, recon_n, n_ts, N):
-    print('reconstructing')
-# Borrowed from:
-# https://www.mathworks.com/matlabcentral/fileexchange/58968-multichannel-singular-spectrum-analysis-beginners-guide
-    RC = np.zeros((N, n_ts, len(recon_n)))
-    for i in recon_n:
-        indx=0
-        import pdb; pdb.set_trace()
-        for t in range(n_ts):
-            buf = np.outer(U[:, i], Va[i, indx:(indx+W)])
-            buf = buf[:, ::-1]
-            RC[:,t,i] =  np.array([buf.diagonal(i).mean() 
-                                   for i in range(-buf.shape[0]+1, buf.shape[1])])
             indx+= W
     return RC.sum(axis=2)
 
@@ -103,8 +83,14 @@ def rotation(pca_output, n_ts, window):
 def time_delay_matrix(comp_ts, window, reverse=False):
     N, P = comp_ts.shape
     K =  N - window + 1
-    time_delay_mat = [hankel(comp_ts[:,p], np.zeros(window))[:K, :] 
-                      for p in range(P)]
+    if reverse:
+        time_delay_mat = [toeplitz(comp_ts[:,p], np.zeros(window)) 
+                          for p in range(P)]
+    else: 
+        # time_delay_mat = [hankel(comp_ts[:,p], np.zeros(window))[:K, :] 
+        #                   for p in range(P)]
+        time_delay_mat = [hankel(comp_ts[:,p], np.zeros(window))
+                          for p in range(P)]
     return np.concatenate(time_delay_mat, axis=1)
 
 
@@ -114,7 +100,8 @@ def write_results(input_type, pca_output, comp_weights,
         analysis_str = 'mssa_gs'
     else:
         analysis_str = 'mssa'
-    pickle.dump(pca_output, open(f'{analysis_str}_results.pkl', 'wb'))
+    pickle.dump([pca_output, comp_weights], 
+                open(f'{analysis_str}_results.pkl', 'wb'))
     if input_type == 'cifti':
         for i in range(n_comps):
             write_to_cifti(comp_weights[i], hdr, n_comps, 
@@ -167,10 +154,16 @@ if __name__ == '__main__':
                         default=None,
                         required=False,
                         type=int)
+    parser.add_argument('-w', '--window',
+                        help='Size of window for time delay embedding',
+                        default=30,
+                        required=False,
+                        type=int)
     
     args_dict = vars(parser.parse_args())
     run_main(args_dict['n_comps'], args_dict['n_sub'],
              args_dict['rotate'], 
              args_dict['gs_regress'], args_dict['task_or_rest'], 
-             args_dict['input_type'], args_dict['reconstruct'])
+             args_dict['input_type'], args_dict['reconstruct'],
+             args_dict['window'])
 

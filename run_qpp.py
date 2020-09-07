@@ -1,6 +1,4 @@
 import argparse
-import fbpca
-import nibabel as nb 
 import numpy as np
 import os
 import pickle
