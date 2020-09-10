@@ -1,6 +1,5 @@
 import argparse
 import fbpca
-import nibabel as nb 
 import numpy as np
 import pickle
 
@@ -9,7 +8,7 @@ from scipy.signal import hilbert
 from scipy.stats import zscore
 from utils.utils import load_data_and_stack, write_to_cifti, \
 write_to_gifti
-from utils.rotation import varimax
+from utils.rotation import varimax, promax
 
 
 def hilbert_transform(input_data):
@@ -17,16 +16,18 @@ def hilbert_transform(input_data):
     return complex_data
 
 
-def pca(input_data, n_comps):
+def pca(input_data, n_comps, n_iter=2):
     n_samples = input_data.shape[0]
-    (U, s, Va) = fbpca.pca(input_data, k=n_comps, n_iter=2)
+    (U, s, Va) = fbpca.pca(input_data, k=n_comps, n_iter=n_iter)
     explained_variance_ = (s ** 2) / (n_samples - 1)
     total_var = explained_variance_.sum()
+    pc_scores = input_data @ Va.T
     output_dict = {
                    'U': U,
                    's': s,
                    'Va': Va,
-                   'exp_var': explained_variance_
+                   'exp_var': explained_variance_,
+                   'pc_scores': pc_scores
                    }                           
     return output_dict
 
@@ -48,15 +49,19 @@ def run_main(n_comps, n_sub, global_signal, rotate,
     pca_output = pca(group_data, n_comps)
 
     if rotate is not None and pca_type == 'real':
-        pca_output = rotation(pca_output, group_data, rotate, pca_type)
+        pca_output = rotation(pca_output, group_data, rotate)
     write_results(input_type, pca_output, rotate,
                   pca_output['Va'], n_comps, 
                   hdr, pca_type, global_signal, 
                   zero_mask, task)
 
 
-def rotation(pca_output, group_data, rotation, pca_type):
-    rotated_weights, _ = varimax(pca_output['Va'].T, normalize=True)
+def rotation(pca_output, group_data, rotation):
+    if rotation == 'varimax':
+        rotated_weights, _ = varimax(pca_output['Va'].T, normalize=True)
+    elif rotation == 'promax':
+        rotated_weights, _ = promax(pca_output['Va'].T, normalize=True)
+    # https://stats.stackexchange.com/questions/59213/how-to-compute-varimax-rotated-principal-components-in-r
     projected_scores = group_data @ pinv(rotated_weights).T
     pca_output['Va'] = rotated_weights.T
     pca_output['U'] = projected_scores
@@ -111,10 +116,10 @@ if __name__ == '__main__':
                         required=False,
                         type=bool)
     parser.add_argument('-r', '--rotate',
-                        help='Whether to varimax rotate pca weights',
+                        help='Whether to rotate pca weights',
                         default=None,
                         required=False,
-                        choices=['varimax'],
+                        choices=['varimax', 'promax'],
                         type=str)
     parser.add_argument('-t', '--task',
                         help='What task to apply PCA to',

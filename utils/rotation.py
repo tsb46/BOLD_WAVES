@@ -3,6 +3,72 @@ import numpy as np
 import scipy as sp
 
 
+
+def promax(loadings, normalize=True, power=4):
+        """
+        # Borrowed from:
+        # https://github.com/EducationalTestingService/factor_analyzer/blob/master/factor_analyzer
+        Perform promax (oblique) rotation, with optional
+        Kaiser normalization.
+        Parameters
+        ----------
+        loadings : array-like
+            The loading matrix
+        Returns
+        -------
+        loadings : numpy array, shape (n_features, n_factors)
+            The loadings matrix
+        rotation_mtx : numpy array, shape (n_factors, n_factors)
+            The rotation matrix
+        """
+        X = loadings.copy()
+        n_rows, n_cols = X.shape
+        if n_cols < 2:
+            return X
+
+        if normalize:
+            # pre-normalization is done in R's
+            # `kaiser()` function when rotate='Promax'.
+            array = X.copy()
+            h2 = sp.diag(np.dot(array, array.T))
+            h2 = np.reshape(h2, (h2.shape[0], 1))
+            weights = array / sp.sqrt(h2)
+
+        else:
+            weights = X.copy()
+
+        # first get varimax rotation
+        X, rotation_mtx = varimax(weights)
+        Y = X * np.abs(X)**(power - 1)
+
+        # fit linear regression model
+        coef = np.dot(np.linalg.inv(np.dot(X.T, X)), np.dot(X.T, Y))
+
+        # calculate diagonal of inverse square
+        try:
+            diag_inv = sp.diag(sp.linalg.inv(sp.dot(coef.T, coef)))
+        except np.linalg.LinAlgError:
+            diag_inv = sp.diag(sp.linalg.pinv(sp.dot(coef.T, coef)))
+
+        # transform and calculate inner products
+        coef = sp.dot(coef, sp.diag(sp.sqrt(diag_inv)))
+        z = sp.dot(X, coef)
+
+        if normalize:
+            # post-normalization is done in R's
+            # `kaiser()` function when rotate='Promax'
+            z = z * sp.sqrt(h2)
+
+        rotation_mtx = sp.dot(rotation_mtx, coef)
+
+        coef_inv = np.linalg.inv(coef)
+        phi = np.dot(coef_inv, coef_inv.T)
+
+        # convert loadings matrix to data frame
+        loadings = z.copy()
+        return loadings, rotation_mtx
+
+
 def structured_varimax(U, n_timeseries, window, gamma=1, tol=1e-8, max_iter=5000):
     # Borrowed from https://github.com/kieferk/pymssa
     # See:
