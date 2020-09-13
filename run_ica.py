@@ -1,9 +1,7 @@
 import argparse
-import fbpca
 import numpy as np
 import pickle
 
-from run_main_pca import pca
 from scipy.stats import zscore
 from sklearn.decomposition import FastICA
 from utils.utils import load_data_and_stack, write_to_cifti, \
@@ -19,12 +17,8 @@ def run_main(n_comps, n_sub, global_signal, task, ica_type, input_type):
     	group_data = zscore(group_data.T)
     elif ica_type == 'temporal':
     	group_data = zscore(group_data)
-    # Whiten
-    whitened_data, whitening_matrix = whiten(group_data, n_comps)
-    # Run Temporal ICA
-    unmixing_matrix = ica(whitened_data)
-    unmixing_matrix = unmixing_matrix @ whitening_matrix.T
-    ica_comps = unmixing_matrix @ group_data.T
+    # Run ICA
+    unmixing_matrix, ica_comps = ica(group_data, n_comps)
     if ica_type == 'spatial':
     	spatial_map = ica_comps
     	ts = unmixing_matrix
@@ -34,19 +28,11 @@ def run_main(n_comps, n_sub, global_signal, task, ica_type, input_type):
     write_results(input_type, spatial_map, ts,
                   hdr, global_signal, zero_mask, task)
 
-
-def ica(whitened_data):
-	ica = FastICA(whiten=False)
-	sources = ica.fit(whitened_data)
-	return ica.components_
-
-
-def whiten(group_data, n_comps):
-    pca_output = pca(group_data, n_comps, n_iter=5)
-    pca_output['s'] /= np.sqrt(group_data.shape[0])
-    whitening_matrix = pca_output['Va'].T / pca_output['s']
-    whitened_data = group_data @ whitening_matrix
-    return whitened_data, whitening_matrix
+def ica(whitened_data, n_comps):
+    ica = FastICA(whiten=True, n_components=n_comps, max_iter=500)
+    ica.fit(whitened_data)
+    sources = ica.transform(whitened_data)
+    return ica.components_, sources
 
 
 def write_results(input_type, spatial_map, ica_ts,
@@ -65,9 +51,9 @@ def write_results(input_type, spatial_map, ica_ts,
 
 if __name__ == '__main__':
     """Run main analysis"""
-    parser = argparse.ArgumentParser(description='Run main PCA analysis')
+    parser = argparse.ArgumentParser(description='Run ICA analysis')
     parser.add_argument('-n', '--n_comps',
-                        help='<Required> Number of components from PCA',
+                        help='<Required> Number of components for ICA',
                         required=True,
                         type=int)
     parser.add_argument('-s', '--n_sub',
