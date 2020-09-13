@@ -20,7 +20,7 @@ def run_main(n_comps, n_sub, global_signal, task, ica_type, input_type):
     # Run ICA
     unmixing_matrix, ica_comps = ica(group_data, n_comps)
     if ica_type == 'spatial':
-    	spatial_map = ica_comps
+    	spatial_map = ica_comps.T
     	ts = unmixing_matrix
     elif ica_type == 'temporal':
     	spatial_map = unmixing_matrix
