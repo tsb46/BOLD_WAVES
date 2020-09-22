@@ -16,9 +16,7 @@
 
 # Rhistory Files
 *.Rhistory
-
-# Keep Glasser Parcellation file
-!templates/Glasser_Parcellation_210.32k_fs_LR.dlabel.nii 
+ 
 
 # juypter notebook
 .ipynb_checkpoints

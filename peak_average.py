@@ -14,6 +14,7 @@ def average_peak_window(peak_indx, group_data, window):
 		l_edge = peak - window
 		r_edge = peak + window
 		windows.append(group_data[l_edge:r_edge, :])
+	import pdb; pdb.set_trace()
 	windows_array = np.dstack(windows)
 	return np.mean(windows_array, axis=2)
 
@@ -24,7 +25,7 @@ def find_comp_peaks(comp_ts, sample_dist=20, height=0):
 
 
 def run_main(input_results, n_sub, comp_number, global_signal, 
-	input_type, task, n_samples=200, window=15):
+	input_type, task, window, n_samples=200):
 	# Load PCA component time series and find peaks
 	analysis_results = pickle.load(open(input_results, 'rb'))
 	comp_ts = analysis_results['U'][:, comp_number]
@@ -94,9 +95,16 @@ if __name__ == '__main__':
 						required=False,
 						default='gifti',
 						type=str)
+	parser.add_argument('-w', '--window_size',
+	                    help='Size of window on each side of selected BOLD value, '
+	                    'i.e. a symmetric window', 
+	                    required=False,
+	                    default=15,
+	                    type=int)
 	args_dict = vars(parser.parse_args())
 	run_main(args_dict['input_results'], args_dict['n_sub'], 
 	         args_dict['component'], args_dict['gs_regress'], 
-	         args_dict['input_type'], args_dict['task'])
+	         args_dict['input_type'], args_dict['task'], 
+	         args_dict['window_size'])
 
 

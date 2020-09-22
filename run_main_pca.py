@@ -16,7 +16,7 @@ def hilbert_transform(input_data):
     return complex_data
 
 
-def pca(input_data, n_comps, n_iter=2):
+def pca(input_data, n_comps, n_iter=5):
     n_samples = input_data.shape[0]
     (U, s, Va) = fbpca.pca(input_data, k=n_comps, n_iter=n_iter)
     explained_variance_ = (s ** 2) / (n_samples - 1)
@@ -64,7 +64,7 @@ def rotation(pca_output, group_data, rotation):
     # https://stats.stackexchange.com/questions/59213/how-to-compute-varimax-rotated-principal-components-in-r
     projected_scores = group_data @ pinv(rotated_weights).T
     pca_output['Va'] = rotated_weights.T
-    pca_output['U'] = projected_scores
+    pca_output['pc_scores'] = projected_scores
     return pca_output
 
 

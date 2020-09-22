@@ -54,12 +54,12 @@ def convolve_hrf_events(hrf, blocks):
 	return convolved_events[:-n_drop]
 
 
-def double_gamma_hrf(t, tr):
+def double_gamma_hrf(t, tr, dip=0.35):
 	# http://www.jarrodmillman.com/rcsds/lectures/convolution_background.html
 	n_steps = np.arange(0, t, tr)
 	gamma_peak = gamma.pdf(n_steps, 6)
 	gamma_under = gamma.pdf(n_steps, 12)
-	gamma_double = gamma_peak - 0.35 * gamma_under
+	gamma_double = gamma_peak - dip * gamma_under
 	return gamma_double / np.max(gamma_double) * 0.6
 
 
