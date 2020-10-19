@@ -23,6 +23,7 @@ def promax(loadings, normalize=True, power=4):
         """
         X = loadings.copy()
         n_rows, n_cols = X.shape
+        import pdb; pdb.set_trace()
         if n_cols < 2:
             return X
 

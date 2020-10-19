@@ -28,10 +28,10 @@ def run_main(n_comps, n_sub, global_signal, task, ica_type, input_type):
     write_results(input_type, spatial_map, ts,
                   hdr, global_signal, zero_mask, task)
 
-def ica(whitened_data, n_comps):
+def ica(input_data, n_comps):
     ica = FastICA(whiten=True, n_components=n_comps, max_iter=500)
-    ica.fit(whitened_data)
-    sources = ica.transform(whitened_data)
+    ica.fit(input_data)
+    sources = ica.transform(input_data)
     return ica.components_, sources
 
 

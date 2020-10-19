@@ -22,27 +22,29 @@ def pca(input_data, n_comps, n_iter=5):
     explained_variance_ = (s ** 2) / (n_samples - 1)
     total_var = explained_variance_.sum()
     pc_scores = input_data @ Va.T
+    loadings =  Va.T @ np.diag(s) 
+    loadings /= np.sqrt(input_data.shape[0]-1)
     output_dict = {
                    'U': U,
                    's': s,
                    'Va': Va,
+                   'loadings': loadings.T,
                    'exp_var': explained_variance_,
                    'pc_scores': pc_scores
-                   }                           
+                   }   
     return output_dict
 
 
-
 def run_main(n_comps, n_sub, global_signal, rotate, 
-             task, input_type, pca_type, pca_mode):
+             task, input_type, pca_type, center):
     group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, 
                                                         global_signal, 
                                                         task)
     # Normalize data
-    if pca_mode == 's':
-        group_data = zscore(group_data)
-    elif pca_mode == 't':
-        group_data = zscore(group_data.T).T
+    group_data = zscore(group_data)
+    # If specified, center along rows
+    if center == 'r':
+        group_data -= group_data.mean(axis=1, keepdims=True)
 
     if pca_type == 'complex':
         group_data = hilbert_transform(group_data)
@@ -51,19 +53,19 @@ def run_main(n_comps, n_sub, global_signal, rotate,
     if rotate is not None and pca_type == 'real':
         pca_output = rotation(pca_output, group_data, rotate)
     write_results(input_type, pca_output, rotate,
-                  pca_output['Va'], n_comps, 
+                  pca_output['loadings'], n_comps, 
                   hdr, pca_type, global_signal, 
                   zero_mask, task)
 
 
 def rotation(pca_output, group_data, rotation):
     if rotation == 'varimax':
-        rotated_weights, _ = varimax(pca_output['Va'].T, normalize=True)
+        rotated_weights, _ = varimax(pca_output['loadings'].T, normalize=True)
     elif rotation == 'promax':
-        rotated_weights, _ = promax(pca_output['Va'].T, normalize=True)
+        rotated_weights, _ = promax(pca_output['loadings'].T, normalize=True)
     # https://stats.stackexchange.com/questions/59213/how-to-compute-varimax-rotated-principal-components-in-r
     projected_scores = group_data @ pinv(rotated_weights).T
-    pca_output['Va'] = rotated_weights.T
+    pca_output['loadings'] = rotated_weights.T
     pca_output['pc_scores'] = projected_scores
     return pca_output
 
@@ -137,16 +139,17 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--pca_type',
                         help='Calculate complex or real PCA',
                         default='real',
+                        choices=['real', 'complex'],
                         type=str)
-    parser.add_argument('-m', '--pca_mode',
-                        help='Whether to normalize along the columns (s) or rows (t)',
-                        default='s',
-                        choices=['t','s'],
+    parser.add_argument('-c', '--center',
+                        help='Whether to center along the columns (c) or rows (r)',
+                        default='c',
+                        choices=['c','r'],
                         type=str)
     
     args_dict = vars(parser.parse_args())
     run_main(args_dict['n_comps'], args_dict['n_sub'], 
              args_dict['gs_regress'], args_dict['rotate'], 
              args_dict['task'], args_dict['input_type'], 
-             args_dict['pca_type'], args_dict['pca_mode'])
+             args_dict['pca_type'], args_dict['center'])
 
