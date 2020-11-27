@@ -93,7 +93,7 @@ if __name__ == '__main__':
 						help='Whether to use global signal regressed data',
 						default=0,
 						required=False,
-						type=bool)
+						type=int)
 	parser.add_argument('-t', '--input_type',
 						help='Whether to load resampled metric .gii files or '
 						'full cifti files',

@@ -155,7 +155,7 @@ if __name__ == '__main__':
                         type=int)
     parser.add_argument('-w', '--window',
                         help='Size of window for time delay embedding',
-                        default=30,
+                        default=50,
                         required=False,
                         type=int)
     

@@ -140,7 +140,7 @@ def run_main(input_type, global_signal, n_sub):
 def write_results(input_type, lag_results, lag_projection, hdr, 
                   global_signal, zero_mask):
     if global_signal:
-        analysis_str = 'lag_projection_gs_'
+        analysis_str = 'lag_projection_gs'
     else:
         analysis_str = 'lag_projection'
     pickle.dump(lag_results, 

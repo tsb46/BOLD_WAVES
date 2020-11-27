@@ -28,7 +28,7 @@ def correlation_threshold(high_thresh, low_thresh, thresh_iter):
 
 
 def detect_qpp(data, window_length, num_scans,
-               parallel_cores, permutations=10, 
+               parallel_cores, permutations, 
                low_corr=0.1, high_corr=0.2, 
                thresh_iter=20,
                convergence_iterations=1,
@@ -189,10 +189,11 @@ def run_qpp_iteration(perm, data, window_length, trs, initial_trs,
     return permutation_result
 
 
-def run_main(n_sub, global_signal, input_type, window_length, parallel_cores):
+def run_main(n_sub, global_signal, input_type, 
+             window_length, parallel_cores, n_repeats):
     group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, global_signal)
     qpp_results = detect_qpp(group_data.T, window_length, 
-                             n_sub, parallel_cores)
+                             n_sub, parallel_cores, n_repeats)
     write_results(input_type, qpp_results, qpp_results[0].T, 
                   hdr, global_signal, zero_mask)
 
@@ -249,8 +250,12 @@ if __name__ == '__main__':
                         help='Number of parrallel cores',
                         default=0,
                         type=int)
+    parser.add_argument('-r', '--repeats',
+                        help='Number repeats of QPP algorithm - "best" is chosen',
+                        default=10,
+                        type=int)
     args_dict = vars(parser.parse_args())
     run_main(args_dict['n_sub'], args_dict['gs_regress'], 
              args_dict['input_type'], args_dict['window_length'], 
-             args_dict['parallel_cores'])
+             args_dict['parallel_cores'], args_dict['repeats'])
 
