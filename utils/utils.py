@@ -227,7 +227,7 @@ def write_to_gifti(result, giftis, script_name, zero_mask, cifti=True):
 	if cifti:
 		os.system(f'./utils/giftis_to_cifti.sh {script_name}.L.func.gii '
 		          f'{script_name}.R.func.gii {script_name}.dtseries.nii')
-	
+
 
 
 

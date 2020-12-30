@@ -35,25 +35,30 @@ def run_main(gifti_files, output_dir):
     if not os.path.isdir(output_dir + '/gs_ts'):
         os.mkdir(output_dir + '/gs_ts')
     gifti = load_gifti(gifti_files)
-    subj_data, n_time = pull_gifti_data(gifti)
+    subj_data, n_time, _, _ = pull_gifti_data(gifti)
     hdr = gifti
+    zero_mask = np.std(subj_data, axis=0) > 0
+    zero_mask_indx = np.where(zero_mask)[0]
+    subj_data = subj_data[:, zero_mask_indx]
     global_signal = compute_global_signal(subj_data)
     subj_data_residuals, global_sig_map = regress_global_signal(subj_data, 
                                                                 global_signal)
     write_data(gifti_files, global_signal, subj_data_residuals, 
-               global_sig_map, output_dir, hdr) 
+               global_sig_map, output_dir, hdr, zero_mask_indx) 
 
 
-def write_data(gifti_files, global_signal, residuals, global_sig_map, output_dir, hdr):
+def write_data(gifti_files, global_signal, residuals, 
+               global_sig_map, output_dir, hdr, zero_mask):
     base_file_dt = os.path.splitext(os.path.basename(gifti_files[0]))[0]
     base_file2 = os.path.splitext(base_file_dt)[0]
     base_file = os.path.splitext(base_file2)[0]
     # Write output
     np.savetxt(output_dir + '/gs_ts/' + base_file + '_gs_ts.txt', global_signal)
     output_subj_data = output_dir + '/' + base_file + '_filt_gs'
-    write_to_gifti(residuals, hdr, output_subj_data)
+    write_to_gifti(residuals, hdr, output_subj_data, zero_mask, cifti=False)
     output_gs_map = output_dir + '/gs_maps/' + base_file + '_gs_map'
-    write_to_gifti(global_sig_map[np.newaxis, :], hdr, output_gs_map)
+    write_to_gifti(global_sig_map[np.newaxis, :], hdr, output_gs_map, 
+                   zero_mask, cifti=False)
 
 
 if __name__ == '__main__':
