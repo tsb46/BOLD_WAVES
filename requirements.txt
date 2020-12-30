@@ -2,6 +2,7 @@ certifi==2020.6.20
 cycler==0.10.0
 docutils==0.15.2
 fbpca==1.0
+hmmlearn==0.2.4
 jmespath==0.10.0
 joblib==0.15.1
 kiwisolver==1.2.0

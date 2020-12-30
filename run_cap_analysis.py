@@ -2,7 +2,7 @@ import argparse
 import numpy as np
 import pickle
 
-from peak_average import average_peak_window
+from run_peak_average import average_peak_window
 from scipy.stats import zscore
 from sklearn.cluster import KMeans
 from run_seed_fc import compute_seed_ts
@@ -15,6 +15,8 @@ write_to_gifti
 	LH - 1794, RH - 1384	
 * Sensorimotor
 	LH - 774, RH - 929
+*  Supramarginal Gyrus
+	LH - 1371, RH - 1789
 """
 def cluster_maps(selected_maps, norm_maps, n_clusters):
 	if norm_maps:
@@ -36,7 +38,8 @@ def compute_window_average(group_data, selected_timepoints,
 		filtered_peaks = np.array([peak for peak in peaks 
 		                          if peak >= window_size
 		                          if peak <= group_data.shape[0]])
-		cluster_avg = average_peak_window(filtered_peaks, group_data, window_size)
+		cluster_avg = average_peak_window(filtered_peaks, group_data, 
+		                                  window_size, window_size)
 		avg_windows_all.append(cluster_avg)
 	return avg_windows_all
 
@@ -121,7 +124,7 @@ if __name__ == '__main__':
 	                    required=False,
 	                    type=int)
 	parser.add_argument('-n', '--n_clusters',
-	                    default=3, 
+	                    default=2, 
 	                    help='Number of clusters to estimate',
 	                    required=False,
 	                    type=int)

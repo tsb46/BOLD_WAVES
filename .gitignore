@@ -7,6 +7,7 @@
 /data/tmp/
 
 
+
 # environment
 .env
 
@@ -20,9 +21,11 @@
 
 # juypter notebook
 .ipynb_checkpoints
+scratch.ipynb
 
 # .DS_Store
 .DS_Store
 
 # demo_files utility functions
 extract_results_ts.py
+utils/subject_sample_indices.json

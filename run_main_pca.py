@@ -16,7 +16,7 @@ def hilbert_transform(input_data):
     return complex_data
 
 
-def pca(input_data, n_comps, n_iter=5):
+def pca(input_data, n_comps, n_iter=10):
     n_samples = input_data.shape[0]
     (U, s, Va) = fbpca.pca(input_data, k=n_comps, n_iter=n_iter)
     explained_variance_ = (s ** 2) / (n_samples - 1)

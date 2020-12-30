@@ -4,7 +4,7 @@ import pickle
 
 from scipy.stats import zscore
 from sklearn.linear_model import LinearRegression
-from peak_average import average_peak_window, find_comp_peaks, \
+from run_peak_average import average_peak_window, find_comp_peaks, \
 select_peaks
 from preprocess.global_signal_regress import compute_global_signal
 from utils.utils import load_data_and_stack, write_to_cifti, \
@@ -21,15 +21,16 @@ def compute_gs_map(global_signal, group_data):
 	return np.array(global_sig_map)
 
 
-def run_main(n_sub, input_type, n_samples=200, window=15):
+def run_main(n_sub, input_type, n_samples=200, window=15, peak_height=2):
 	# Average window around peak
 	group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, False)
 	group_data_gs, _, _, _ = load_data_and_stack(n_sub, input_type, True)
-	global_signal = compute_global_signal(group_data)
-	gs_peaks = find_comp_peaks(global_signal)
-	gs_selected_peaks = select_peaks(gs_peaks, window, group_data.shape[0], n_samples)
-	peak_avg = average_peak_window(gs_selected_peaks, group_data, window)
-	peak_avg_gs = average_peak_window(gs_selected_peaks, group_data_gs, window)
+	global_signal = zscore(compute_global_signal(group_data))
+	gs_peaks = find_comp_peaks(global_signal, peak_height)
+	gs_selected_peaks = select_peaks(gs_peaks, window, window,
+	                                 group_data.shape[0], n_samples)
+	peak_avg = average_peak_window(gs_selected_peaks, group_data, window, window)
+	peak_avg_gs = average_peak_window(gs_selected_peaks, group_data_gs, window, window)
 	gs_map = compute_gs_map(global_signal, group_data)
 	write_results(peak_avg, peak_avg_gs, global_signal, gs_map[np.newaxis, :], 
 	              hdr, input_type, zero_mask)
