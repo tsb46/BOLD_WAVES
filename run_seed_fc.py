@@ -12,6 +12,8 @@ write_to_gifti
 	LH - 1794, RH - 1384	
 * Sensorimotor
 	LH - 774, RH - 929
+*  Supramarginal Gyrus
+	LH - 1371, RH - 1789
 """
 
 def compute_fc_map(seed_signal, group_data):

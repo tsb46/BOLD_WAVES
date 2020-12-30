@@ -205,7 +205,7 @@ def write_to_cifti(result, hdr, n_rows, script_name):
 	nb.save(cifti_out, f'{script_name}_results.dtseries.nii')
 
 
-def write_to_gifti(result, giftis, script_name, zero_mask):
+def write_to_gifti(result, giftis, script_name, zero_mask, cifti=True):
 	example_array_L = giftis[0].darrays[0]
 	example_array_R = giftis[1].darrays[0]		
 	L_shape = len(giftis[0].agg_data()[0])
@@ -224,8 +224,10 @@ def write_to_gifti(result, giftis, script_name, zero_mask):
 		R_gifti_image.add_gifti_data_array(gifti_array_R)
 	nb.save(L_gifti_image, f'{script_name}.L.func.gii')
 	nb.save(R_gifti_image, f'{script_name}.R.func.gii')
-	os.system(f'./utils/giftis_to_cifti.sh {script_name}.L.func.gii '
-	          f'{script_name}.R.func.gii {script_name}.dtseries.nii')
+	if cifti:
+		os.system(f'./utils/giftis_to_cifti.sh {script_name}.L.func.gii '
+		          f'{script_name}.R.func.gii {script_name}.dtseries.nii')
+	
 
 
 

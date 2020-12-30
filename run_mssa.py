@@ -13,23 +13,24 @@ from run_main_pca import pca
 
 
 def run_main(n_comps, n_sub, rotate, global_signal, task_or_rest, input_type, 
-             reconstruct_n, window, n_svd_comps=200):
+             reconstruct_n, window, n_svd_comps=100):
     group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, 
                                                         global_signal, 
                                                         task_or_rest)
     # Normalize data
     group_data = zscore(group_data)
     pca_output = pca(group_data, n_svd_comps)
-    pc_comps = pca_output['U'].copy()
+    pc_comps = pca_output['pc_scores'].copy()
     time_delay_mat = time_delay_matrix(pc_comps, window)
     time_delay_pca = pca(time_delay_mat, n_comps)
     # Free up memory
     # del time_delay_mat
     if rotate is not None:
         time_delay_pca = rotation(time_delay_pca, n_svd_comps, window)
+
     time_delay_weights = restack_project_weights(time_delay_pca['Va'], window, 
                                                  n_comps, n_svd_comps, 
-                                                 pc_comps,
+                                                 pca_output['U'],
                                                  group_data)
     if reconstruct_n is not None:
         recon_comps = reconstuct_components(time_delay_pca['U'], 
@@ -99,6 +100,7 @@ def write_results(input_type, pca_output, comp_weights,
         analysis_str = 'mssa_gs'
     else:
         analysis_str = 'mssa'
+    import pdb; pdb.set_trace()
     pickle.dump([pca_output, comp_weights], 
                 open(f'{analysis_str}_results.pkl', 'wb'))
     if input_type == 'cifti':
@@ -155,7 +157,7 @@ if __name__ == '__main__':
                         type=int)
     parser.add_argument('-w', '--window',
                         help='Size of window for time delay embedding',
-                        default=30,
+                        default=50,
                         required=False,
                         type=int)
     
