@@ -147,26 +147,6 @@ def load_data_and_stack(n_sub, input_type, global_signal,
 	return group_data[:, zero_mask], hdr, zero_mask_indx, regressor
 
 
-def plot_sorted_corr_mat(corr_mat, cluster_assignments):
-	# Create sorting index from factor assignments
-	sort_indx = np.argsort(factor_assignments)
-	sorted_vals = np.sort(factor_assignments)
-	# Sort Distance Matrix
-	sortedmat = [[dist_mat[i][j] for j in sort_indx] for i in sort_indx]
-	# Plot Distance Matrix
-	fig, ax = plt.subplots(figsize=(10,7))
-	c = plt.pcolormesh(sortedmat, cmap='seismic')
-	fig.colorbar(c, ax=ax)
-	# Plot rectangular patches along diagnol to indicate factor assignments
-	for i in np.unique(sorted_vals):
-		ind = np.where(sorted_vals == i)
-		mn = np.min(ind)
-		mx = np.max(ind)
-		sz=(mx-mn)+1
-		rect = Rectangle((mn,mn), sz, sz ,linewidth=1,edgecolor='r',facecolor='none')
-		ax.add_patch(rect)
-	plt.show()
-
 def pull_cifti_data(cifti_obj):
 	cifti_obj.set_data_dtype('<f4')
 	cifti_data = np.array(cifti_obj.get_fdata())

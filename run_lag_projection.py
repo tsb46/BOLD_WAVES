@@ -15,8 +15,6 @@ write_to_gifti
 def compute_lag_matrix(subj_data, num_nodes, tr, lags, lag_lim):
     # Normalize time series
     subj_data = zscore(subj_data)
-    # Replace NaNs w/ zeros - some vertices have no data - i.e. all 0s
-    subj_data[np.isnan(subj_data)] = 0
     # Do the lagged correlation/covariance computation of TD matrices
     Cov = lagged_cov(subj_data, subj_data, np.max(lags));
 
@@ -112,14 +110,10 @@ def parabolic_interp(lcc, tr):
     return peak_lag, peak_cov
 
 
-def run_lag_projection(input_data, tr=0.72, lag=6, lag_lim=4):
+def run_lag_projection(input_data, tr=0.72, lag=8, lag_lim=12):
    # lag limit (in seconds)
     lags = np.arange(-lag,(lag+1))  # range of TR shifts; max(lags) = round(lag_lim/tr + 1)
     num_nodes = input_data.shape[1]
-    # initialize group matrices
-    grp_lags = []
-    grp_ZL = [] # zero-lag correlation
-    grp_peak = [] #peak correlation
     lag_mat, cov_mat, zero_lag_corr = compute_lag_matrix(input_data, 
                                                          num_nodes, 
                                                          tr, lags,

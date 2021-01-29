@@ -13,7 +13,7 @@ from utils.rotation import varimax, promax
 
 def hilbert_transform(input_data):
     complex_data = hilbert(input_data, axis=0)
-    return complex_data
+    return complex_data.conj()
 
 
 def pca(input_data, n_comps, n_iter=10):
@@ -81,7 +81,10 @@ def write_results(input_type, pca_output, rotate, comp_weights,
         analysis_str += f'_{rotate}'
     if pca_type == 'complex':
         analysis_str += '_complex'
-        pickle.dump(pca_output, open(f'{analysis_str}_results.pkl', 'wb'))
+        pickle.dump({
+                    'pca': pca_output, 
+                    'metadata': [input_type, task, hdr, zero_mask]
+                    }, open(f'{analysis_str}_results.pkl', 'wb'))
         comp_weights_real = np.real(comp_weights)
         comp_weights_imag = np.imag(comp_weights)
         comp_weights_ang = np.angle(comp_weights)

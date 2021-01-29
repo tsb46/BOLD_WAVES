@@ -21,7 +21,7 @@ write_to_gifti
 def cluster_maps(selected_maps, norm_maps, n_clusters):
 	if norm_maps:
 		selected_maps = zscore(selected_maps.T).T
-	kmeans = KMeans(n_clusters=n_clusters).fit(selected_maps)
+	kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(selected_maps)
 	return kmeans.cluster_centers_, kmeans.labels_
 
 
@@ -55,24 +55,30 @@ def get_suprathreshold_maps(seed_signal, group_data, perc_thres):
 	return selected_vals, np.squeeze(group_data[selected_vals, :]) 
 
 
-def run_main(lh_vertices, rh_vertices, n_clusters, norm, n_sub, global_signal, 
+def run_main(lh_vertices, rh_vertices, seed_ts_fp, n_clusters, norm, n_sub, global_signal, 
              input_type, perc_thres, window_avg, window_size):
-	if lh_vertices is None and rh_vertices is None:
-		raise Exception('Atleast one vertex index should be supplied')
+	vertex_input = (lh_vertices is not None) or (rh_vertices is not None)
+	if not vertex_input and seed_ts_fp is None:
+		raise Exception('Atleast one vertex index or seed ts should be supplied')
+	if vertex_input and seed_ts_fp is not None:
+		raise Exception('Either vertex indices or seed ts should be supplied')
 
 	group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, 
 	                                                    global_signal)
 	# Normalize data
 	group_data = zscore(group_data)
-	# Combined LH/RH data is concatenated LH then RH - add n_vertices from LH
-	_, _, n_vert_L, _ = pull_gifti_data(hdr)
-	# Ensure chosen vertices are not 'zeroed out' vertices - i.e. no signal
-	cond_1 = all([v in zero_mask for v in lh_vertices])
-	cond_2 = all([(v+n_vert_L) in zero_mask for v in rh_vertices])
-	if not cond_1 or not cond_2:
-		raise Exception('The vertex supplied contains all zeros')
-	seed_ts = compute_seed_ts(lh_vertices, rh_vertices, group_data, zero_mask, 
-	                          n_vert_L)
+	if vertex_input:
+		# Combined LH/RH data is concatenated LH then RH - add n_vertices from LH
+		_, _, n_vert_L, _ = pull_gifti_data(hdr)
+		# Ensure chosen vertices are not 'zeroed out' vertices - i.e. no signal
+		cond_1 = all([v in zero_mask for v in lh_vertices])
+		cond_2 = all([(v+n_vert_L) in zero_mask for v in rh_vertices])
+		if not cond_1 or not cond_2:
+			raise Exception('The vertex supplied contains all zeros')
+		seed_ts = compute_seed_ts(lh_vertices, rh_vertices, group_data, zero_mask, 
+		                          n_vert_L)
+	else:
+		seed_ts = np.loadtxt(seed_ts_fp)
 	selected_tps, selected_maps = get_suprathreshold_maps(seed_ts, group_data, 
 	                                                      perc_thres)
 	cluster_centroid, cluster_indx = cluster_maps(selected_maps, norm, n_clusters)
@@ -83,11 +89,11 @@ def run_main(lh_vertices, rh_vertices, n_clusters, norm, n_sub, global_signal,
 		cluster_win_avgs = None
 	write_results(cluster_centroid, cluster_indx, selected_tps,
 	              cluster_win_avgs, window_avg, norm, 
-	              global_signal, hdr, 
+	              vertex_input, global_signal, hdr, 
 	              input_type, zero_mask)
 
 def write_results(cluster_centroid, cluster_indx, selected_tps,
-	              cluster_win_avgs, window_avg, norm, 
+	              cluster_win_avgs, window_avg, norm, vertex_input,
 	              global_signal, hdr, input_type, zero_mask):
 	analysis_str = 'caps'
 	if global_signal:
@@ -123,6 +129,11 @@ if __name__ == '__main__':
 	                    help='RH vertex indices to compute seed time series', 
 	                    required=False,
 	                    type=int)
+	parser.add_argument('-seed', '--seed_ts', 
+	                    default=None,
+	                    help='File path to seed ts file if vertex indices are not supplied',
+	                    required=False,
+	                    type=str)
 	parser.add_argument('-n', '--n_clusters',
 	                    default=2, 
 	                    help='Number of clusters to estimate',
@@ -168,6 +179,7 @@ if __name__ == '__main__':
 	                    type=int)
 	args_dict = vars(parser.parse_args())
 	run_main(args_dict['left_vertices'], args_dict['right_vertices'],
+	         args_dict['seed_ts'],
 	         args_dict['n_clusters'], args_dict['norm_maps'], 
 	         args_dict['n_sub'], args_dict['gs_regress'], args_dict['input_type'], 
 	         args_dict['percentile_threshold'], args_dict['window_average'], 
