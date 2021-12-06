@@ -16,9 +16,10 @@ def hilbert_transform(input_data):
     return complex_data.conj()
 
 
-def pca(input_data, n_comps, n_iter=10):
+def pca(input_data, n_comps, n_iter=20, l = 10):
+    l += n_comps
     n_samples = input_data.shape[0]
-    (U, s, Va) = fbpca.pca(input_data, k=n_comps, n_iter=n_iter)
+    (U, s, Va) = fbpca.pca(input_data, k=n_comps, n_iter=n_iter, l = l)
     explained_variance_ = (s ** 2) / (n_samples - 1)
     total_var = explained_variance_.sum()
     pc_scores = input_data @ Va.T
@@ -50,7 +51,7 @@ def run_main(n_comps, n_sub, global_signal, rotate,
         group_data = hilbert_transform(group_data)
     pca_output = pca(group_data, n_comps)
 
-    if rotate is not None and pca_type == 'real':
+    if rotate is not None:
         pca_output = rotation(pca_output, group_data, rotate)
     write_results(input_type, pca_output, rotate,
                   pca_output['loadings'], n_comps, 
@@ -60,9 +61,9 @@ def run_main(n_comps, n_sub, global_signal, rotate,
 
 def rotation(pca_output, group_data, rotation):
     if rotation == 'varimax':
-        rotated_weights, _ = varimax(pca_output['loadings'].T, normalize=True)
+        rotated_weights, _ = varimax(pca_output['loadings'].T)
     elif rotation == 'promax':
-        rotated_weights, _ = promax(pca_output['loadings'].T, normalize=True)
+        rotated_weights, _, _ = promax(pca_output['loadings'].T)
     # https://stats.stackexchange.com/questions/59213/how-to-compute-varimax-rotated-principal-components-in-r
     projected_scores = group_data @ pinv(rotated_weights).T
     pca_output['loadings'] = rotated_weights.T
@@ -139,7 +140,7 @@ if __name__ == '__main__':
                         required=False,
                         default='gifti',
                         type=str)
-    parser.add_argument('-p', '--pca_type',
+    parser.add_argument('-p', '--real_complex',
                         help='Calculate complex or real PCA',
                         default='real',
                         choices=['real', 'complex'],
@@ -154,5 +155,5 @@ if __name__ == '__main__':
     run_main(args_dict['n_comps'], args_dict['n_sub'], 
              args_dict['gs_regress'], args_dict['rotate'], 
              args_dict['task'], args_dict['input_type'], 
-             args_dict['pca_type'], args_dict['center'])
+             args_dict['real_complex'], args_dict['center'])
 
