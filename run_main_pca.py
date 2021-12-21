@@ -37,10 +37,9 @@ def pca(input_data, n_comps, n_iter=20, l = 10):
 
 
 def run_main(n_comps, n_sub, global_signal, rotate, 
-             task, input_type, pca_type, center):
+             input_type, pca_type, center):
     group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, 
-                                                        global_signal, 
-                                                        task)
+                                                        global_signal)
     # Normalize data
     group_data = zscore(group_data)
     # If specified, center along rows
@@ -56,7 +55,7 @@ def run_main(n_comps, n_sub, global_signal, rotate,
     write_results(input_type, pca_output, rotate,
                   pca_output['loadings'], n_comps, 
                   hdr, pca_type, global_signal, 
-                  zero_mask, task)
+                  zero_mask)
 
 
 def rotation(pca_output, group_data, rotation):
@@ -73,11 +72,11 @@ def rotation(pca_output, group_data, rotation):
 
 def write_results(input_type, pca_output, rotate, comp_weights, 
                   n_comps, hdr, pca_type, global_signal,
-                  zero_mask, task):
+                  zero_mask):
     if global_signal:
-        analysis_str = 'pca_gs_' + task
+        analysis_str = 'pca_gs_'
     else:
-        analysis_str = 'pca_' + task
+        analysis_str = 'pca_'
     if rotate:
         analysis_str += f'_{rotate}'
     if pca_type == 'complex':
@@ -127,12 +126,6 @@ if __name__ == '__main__':
                         required=False,
                         choices=['varimax', 'promax'],
                         type=str)
-    parser.add_argument('-t', '--task',
-                        help='What task to apply PCA to',
-                        choices=['rest', 'wm', 'rel'],
-                        default='rest',
-                        required=False,
-                        type=str)
     parser.add_argument('-i', '--input_type',
                         help='Whether to load resampled metric .gii files or '
                         'full cifti files',
@@ -154,6 +147,6 @@ if __name__ == '__main__':
     args_dict = vars(parser.parse_args())
     run_main(args_dict['n_comps'], args_dict['n_sub'], 
              args_dict['gs_regress'], args_dict['rotate'], 
-             args_dict['task'], args_dict['input_type'], 
+             args_dict['input_type'], 
              args_dict['real_complex'], args_dict['center'])
 

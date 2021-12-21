@@ -29,7 +29,7 @@ def find_comp_peaks(seed_ts, height, sample_dist=20):
 
 
 def run_main(input_ts, n_sub, global_signal, input_type, 
-             task, l_window, r_window, peak_thres, return_peak_ts, 
+             l_window, r_window, peak_thres, return_peak_ts, 
              n_samples=200):
 	# Load time series and find peaks
 	seed_ts = np.loadtxt(input_ts)
@@ -38,7 +38,7 @@ def run_main(input_ts, n_sub, global_signal, input_type,
 	                              len(seed_ts), n_samples)
 	# Average window around peak
 	group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, 
-	                                                    global_signal, task)
+	                                                    global_signal)
 	if return_peak_ts:
 		peak_avg, peak_ts = average_peak_window(selected_peaks, group_data, 
 		                                        l_window, r_window,
@@ -49,7 +49,7 @@ def run_main(input_ts, n_sub, global_signal, input_type,
 		peak_avg = average_peak_window(selected_peaks, group_data, 
 		                               l_window, r_window)
 		write_results(peak_avg, hdr, input_type, global_signal, 
-		              zero_mask, task)
+		              zero_mask)
 
 
 def select_peaks(peaks, l_window, r_window, max_sample, n_samples):
@@ -61,11 +61,11 @@ def select_peaks(peaks, l_window, r_window, max_sample, n_samples):
 
 
 def write_results(peak_avg, hdr, input_type, global_signal, 
-                  zero_mask, task, peak_ts=None):
+                  zero_mask, peak_ts=None):
 	if global_signal:
-		analysis_str = 'peak_average_' + task + f'_gs'
+		analysis_str = 'peak_average_gs'
 	else:
-		analysis_str = 'peak_average_' + task
+		analysis_str = 'peak_average_' 
 	pickle.dump(peak_avg, open(f'{analysis_str}_results.pkl', 'wb'))
 	if peak_ts is not None:
 		pickle.dump(peak_ts, open(f'{analysis_str}_ts.pkl', 'wb'))
@@ -89,12 +89,6 @@ if __name__ == '__main__':
 						'you used to calculate seed time series',
 						required=True,
 						type=int)
-	parser.add_argument('-t', '--task',
-                        help='What task was used',
-                        choices=['wm', 'rel', 'rest'],
-                        default='rest',
-                        required=False,
-                        type=str)
 	parser.add_argument('-g', '--gs_regress',
 						help='Whether to use global signal regressed data',
 						default=0,
@@ -132,7 +126,7 @@ if __name__ == '__main__':
 	args_dict = vars(parser.parse_args())
 	run_main(args_dict['input_ts'], args_dict['n_sub'], 
 	         args_dict['gs_regress'], args_dict['input_type'], 
-	         args_dict['task'], args_dict['left_window_size'],
+	         args_dict['left_window_size'],
 	         args_dict['right_window_size'], 
 	         args_dict['peak_thres'], args_dict['return_peak_ts'])
 

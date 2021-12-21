@@ -9,11 +9,10 @@ from run_main_pca import pca
 from hmmlearn import hmm
 
 
-def run_main(n_comps, n_sub, global_signal, task_or_rest, input_type,
+def run_main(n_comps, n_sub, global_signal, input_type,
              cov_type, n_pca_comps=100):
     group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, 
-                                                        global_signal, 
-                                                        task_or_rest)
+                                                        global_signal)
     # Normalize data
     group_data = zscore(group_data)
     # Dimension Reduction
@@ -65,12 +64,6 @@ if __name__ == '__main__':
                         default=0,
                         required=False,
                         type=bool)
-    parser.add_argument('-t', '--task_or_rest',
-                        help='Whether to apply to task or rest data',
-                        choices=['rest', 'task'],
-                        default='rest',
-                        required=False,
-                        type=str)
     parser.add_argument('-i', '--input_type',
                         help='Whether to load resampled metric .gii files or '
                         'full cifti files',
@@ -87,6 +80,6 @@ if __name__ == '__main__':
     
     args_dict = vars(parser.parse_args())
     run_main(args_dict['n_comps'], args_dict['n_sub'],
-             args_dict['gs_regress'], args_dict['task_or_rest'], 
+             args_dict['gs_regress'],
              args_dict['input_type'], args_dict['cov_type'])
 
