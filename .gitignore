@@ -23,6 +23,9 @@
 .ipynb_checkpoints
 scratch.ipynb
 
+# Runner shell script
+run_analysis.sh
+
 # .DS_Store
 .DS_Store
 
