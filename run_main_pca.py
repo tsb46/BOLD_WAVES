@@ -37,11 +37,15 @@ def pca(input_data, n_comps, n_iter=20, l = 10):
 
 
 def run_main(n_comps, n_sub, global_signal, rotate, 
-             input_type, pca_type, center):
+             input_type, pca_type, center, shuffle_ts):
     group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, 
                                                         global_signal)
     # Normalize data
     group_data = zscore(group_data)
+
+    # If specified, shuffle ts (for null testing)
+    if shuffle_ts:
+        group_data = shuffle_time(group_data)
     # If specified, center along rows
     if center == 'r':
         group_data -= group_data.mean(axis=1, keepdims=True)
@@ -70,20 +74,25 @@ def rotation(pca_output, group_data, rotation):
     return pca_output
 
 
+def shuffle_time(data):
+    shuffle_indx = np.random.permutation(np.arange(data.shape[0]))
+    return data[shuffle_indx, :]
+
+
 def write_results(input_type, pca_output, rotate, comp_weights, 
                   n_comps, hdr, pca_type, global_signal,
                   zero_mask):
     if global_signal:
-        analysis_str = 'pca_gs_'
+        analysis_str = 'pca_gs'
     else:
-        analysis_str = 'pca_'
+        analysis_str = 'pca'
     if rotate:
         analysis_str += f'_{rotate}'
     if pca_type == 'complex':
         analysis_str += '_complex'
         pickle.dump({
                     'pca': pca_output, 
-                    'metadata': [input_type, task, hdr, zero_mask]
+                    'metadata': [input_type, hdr, zero_mask]
                     }, open(f'{analysis_str}_results.pkl', 'wb'))
         comp_weights_real = np.real(comp_weights)
         comp_weights_imag = np.imag(comp_weights)
@@ -143,10 +152,16 @@ if __name__ == '__main__':
                         default='c',
                         choices=['c','r'],
                         type=str)
+    parser.add_argument('-shuffle', '--shuffle_ts',
+                        help='Whether to shuffle time series (preserving '
+                             'correlation structure but removing lag)',
+                        default=0,
+                        required=False,
+                        type=int)
     
     args_dict = vars(parser.parse_args())
     run_main(args_dict['n_comps'], args_dict['n_sub'], 
              args_dict['gs_regress'], args_dict['rotate'], 
-             args_dict['input_type'], 
-             args_dict['real_complex'], args_dict['center'])
+             args_dict['input_type'], args_dict['real_complex'], 
+             args_dict['center'], args_dict['shuffle_ts'])
 
