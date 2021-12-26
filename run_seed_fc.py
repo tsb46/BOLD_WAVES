@@ -43,8 +43,7 @@ def run_main(lh_vertices, rh_vertices, n_sub, global_signal, input_type):
 	if lh_vertices is None and rh_vertices is None:
 		raise Exception('Atleast one vertex index should be supplied')
 
-	group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, 
-	                                                    global_signal)
+	group_data, hdr, zero_mask  = load_data_and_stack(n_sub, input_type, global_signal)
 	# Normalize data
 	group_data = zscore(group_data)
 	# Combined LH/RH data is concatenated LH then RH - add n_vertices from LH

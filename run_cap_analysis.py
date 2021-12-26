@@ -63,8 +63,7 @@ def run_main(lh_vertices, rh_vertices, seed_ts_fp, n_clusters, norm, n_sub, glob
 	if vertex_input and seed_ts_fp is not None:
 		raise Exception('Either vertex indices or seed ts should be supplied')
 
-	group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, 
-	                                                    global_signal)
+	group_data, hdr, zero_mask = load_data_and_stack(n_sub, input_type, global_signal)
 	# Normalize data
 	group_data = zscore(group_data)
 	if vertex_input:

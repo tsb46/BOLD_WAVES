@@ -23,7 +23,7 @@ def compute_gs_map(global_signal, group_data):
 
 def run_main(n_sub, input_type, n_samples=200, window=15, peak_height=2):
 	# Average window around peak
-	group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, False)
+	group_data, hdr, zero_mask = load_data_and_stack(n_sub, input_type, False)
 	group_data_gs, _, _, _ = load_data_and_stack(n_sub, input_type, True)
 	global_signal = zscore(compute_global_signal(group_data))
 	gs_peaks = find_comp_peaks(global_signal, peak_height)

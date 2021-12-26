@@ -123,8 +123,7 @@ def run_lag_projection(input_data, tr=0.72, lag=8, lag_lim=12):
     return uw_lag_proj, w_lag_proj, cov_mat
 
 def run_main(input_type, global_signal, n_sub):
-    group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, 
-                                                        global_signal)
+    group_data, hdr, zero_mask = load_data_and_stack(n_sub, input_type, global_signal)
     lag_results = run_lag_projection(group_data)
     write_results(input_type, lag_results, 
                   lag_results[0][np.newaxis, :], hdr,

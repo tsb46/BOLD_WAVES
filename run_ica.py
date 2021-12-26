@@ -12,7 +12,7 @@ write_to_gifti
 
 def run_main(n_comps, n_sub, global_signal, ica_type, 
 			 real_complex, input_type):
-	group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, 
+	group_data, hdr, zero_mask = load_data_and_stack(n_sub, input_type, 
 														global_signal)
 	# Normalize data
 	if ica_type == 'spatial':

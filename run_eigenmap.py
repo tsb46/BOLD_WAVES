@@ -41,7 +41,7 @@ def spectral_embed(affinity_mat, n_comps):
 
 def run_main(n_sub, n_comps, gradient_algorithm, 
              global_signal, input_type, perc_thresh):
-    group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, global_signal)
+    group_data, hdr, zero_mask = load_data_and_stack(n_sub, input_type, global_signal)
     group_data = zscore(group_data)
     affinity_mat = compute_affinity_matrix(group_data, perc_thresh)
     if gradient_algorithm == 'laplacian':

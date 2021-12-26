@@ -11,8 +11,7 @@ from hmmlearn import hmm
 
 def run_main(n_comps, n_sub, global_signal, input_type,
              cov_type, n_pca_comps=100):
-    group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, 
-                                                        global_signal)
+    group_data, hdr, zero_mask = load_data_and_stack(n_sub, input_type, global_signal)
     # Normalize data
     group_data = zscore(group_data)
     # Dimension Reduction

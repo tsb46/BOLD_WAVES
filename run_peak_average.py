@@ -37,8 +37,7 @@ def run_main(input_ts, n_sub, global_signal, input_type,
 	selected_peaks = select_peaks(ts_peaks, l_window, r_window, 
 	                              len(seed_ts), n_samples)
 	# Average window around peak
-	group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, 
-	                                                    global_signal)
+	group_data, hdr, zero_mask = load_data_and_stack(n_sub, input_type, global_signal)
 	if return_peak_ts:
 		peak_avg, peak_ts = average_peak_window(selected_peaks, group_data, 
 		                                        l_window, r_window,
