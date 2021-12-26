@@ -17,7 +17,7 @@ def average_peak_window(peak_indx, group_data, l_window,
 		windows.append(group_data[l_edge:r_edge, :])
 	windows_array = np.dstack(windows)
 	if return_peak_ts:
-		return np.mean(windows_array, axis=2), np.vstack(windows)
+		return np.mean(windows_array, axis=2), windows
 	else:
 		return np.mean(windows_array, axis=2)
 
@@ -30,7 +30,7 @@ def find_comp_peaks(seed_ts, height, sample_dist=20):
 
 def run_main(input_ts, n_sub, global_signal, input_type, 
              l_window, r_window, peak_thres, return_peak_ts, 
-             n_samples=200):
+             n_samples=20):
 	# Load time series and find peaks
 	seed_ts = np.loadtxt(input_ts)
 	ts_peaks = find_comp_peaks(seed_ts, peak_thres)
@@ -44,7 +44,7 @@ def run_main(input_ts, n_sub, global_signal, input_type,
 		                                        l_window, r_window,
 		                                        return_peak_ts)
 		write_results(peak_avg, hdr, input_type, global_signal, 
-		              zero_mask, task, peak_ts)
+		              zero_mask, peak_ts)
 	else:
 		peak_avg = average_peak_window(selected_peaks, group_data, 
 		                               l_window, r_window)
@@ -65,10 +65,11 @@ def write_results(peak_avg, hdr, input_type, global_signal,
 	if global_signal:
 		analysis_str = 'peak_average_gs'
 	else:
-		analysis_str = 'peak_average_' 
+		analysis_str = 'peak_average' 
 	pickle.dump(peak_avg, open(f'{analysis_str}_results.pkl', 'wb'))
 	if peak_ts is not None:
-		pickle.dump(peak_ts, open(f'{analysis_str}_ts.pkl', 'wb'))
+		for i, window in enumerate(peak_ts):
+			write_to_gifti(window, hdr, f'{analysis_str}_ts_sample_{i}', zero_mask)
 	if input_type == 'cifti':
 		write_to_cifti(peak_avg, hdr, 
 					   peak_avg.shape[0], analysis_str)

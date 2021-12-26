@@ -97,14 +97,17 @@ def write_results(input_type, pca_output, rotate, comp_weights,
         comp_weights_real = np.real(comp_weights)
         comp_weights_imag = np.imag(comp_weights)
         comp_weights_ang = np.angle(comp_weights)
+        comp_weights_amp = np.abs(comp_weights)
         if input_type == 'cifti':
             write_to_cifti(comp_weights_real, hdr, n_comps, f'{analysis_str}_real')
             write_to_cifti(comp_weights_imag, hdr, n_comps, f'{analysis_str}_imag')
             write_to_cifti(comp_weights_ang, hdr, n_comps, f'{analysis_str}_ang')
+            write_to_cifti(comp_weights_amp, hdr, n_comps, f'{analysis_str}_amp')
         elif input_type == 'gifti':
             write_to_gifti(comp_weights_real, hdr, f'{analysis_str}_real', zero_mask)
             write_to_gifti(comp_weights_imag, hdr, f'{analysis_str}_imag', zero_mask)
             write_to_gifti(comp_weights_ang, hdr, f'{analysis_str}_ang', zero_mask)
+            write_to_gifti(comp_weights_amp, hdr, f'{analysis_str}_amp', zero_mask)
     elif pca_type == 'real':
         pickle.dump(pca_output, open(f'{analysis_str}_results.pkl', 'wb'))
         if input_type == 'cifti':

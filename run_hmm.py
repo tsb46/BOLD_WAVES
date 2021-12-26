@@ -42,6 +42,9 @@ def write_results(input_type, hmm_results, mean_maps,
         analysis_str = 'hmm'
     pickle.dump(hmm_results, 
                 open(f'{analysis_str}_results.pkl', 'wb'))
+    if n_comps==1:
+        mean_maps = mean_maps[np.newaxis, :]
+
     if input_type == 'cifti':
         write_to_cifti(mean_maps, hdr, n_comps, f'{analysis_str}_mean_map')
     elif input_type == 'gifti':
