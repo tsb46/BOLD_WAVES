@@ -1,4 +1,7 @@
-library(neurohcp)
+if (!require("neurohcp")) {
+  install.packages("neurohcp", repos="http://cran.rstudio.com/") 
+  library("neurohcp")
+}
 make_aws_call(path_to_file = "/", 
               bucket = "hcp-openaccess",region = "us-east-1", access_key = "", 
               secret_key = "",
