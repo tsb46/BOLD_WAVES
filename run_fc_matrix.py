@@ -17,11 +17,26 @@ def compute_fc_matrix(group_data):
     return corr_mat
 
 
-def run_main(n_sub, global_signal, input_type):
-    group_data, hdr, zero_mask, _ = load_data_and_stack(n_sub, input_type, global_signal)
+def run_main(n_sub, global_signal, input_type, parcellation, dynamic_fc):
+    if parcellation & (input_type == 'gifti'):
+        raise Exception('Parcellation time series are saved as .ptseries.nii cifti '
+                        'files - change to cifti input_type')
+
+    group_data, hdr, zero_mask = load_data_and_stack(n_sub, input_type, global_signal, parcellation)
     group_data = zscore(group_data)
-    fc_mat = compute_fc_matrix(group_data)
+    if dynamic_fc:
+        # computer outer product of time point vector with itself
+        fc_mat = np.apply_along_axis(outer_ltriangle, 1, group_data)
+    else:
+        fc_mat = compute_fc_matrix(group_data)
     write_results(fc_mat, global_signal, 'fc_matrix')
+
+
+def outer_ltriangle(vec):
+    outer_mat = np.outer(vec, vec.T)
+    # exclude diagonal?
+    vec_ltr = outer_mat[np.tril_indices(outer_mat.shape[0], k=1)]
+    return vec_ltr
 
 
 def write_results(fc_matrix, global_signal, analysis_str):
@@ -50,7 +65,19 @@ if __name__ == '__main__':
                         required=False,
                         default='gifti',
                         type=str)
+    parser.add_argument('-p', '--parcellation', 
+                        help='Whether to load parcellated time series',
+                        required=False,
+                        default=0,
+                        type=int)
+    parser.add_argument('-d', '--dynamic_fc', 
+                        help='Whether to calculate dynamic FC using edge time series (Esfahlani et al. 2020)',
+                        required=False,
+                        default=0,
+                        type=int)
+
     args_dict = vars(parser.parse_args())
     run_main(args_dict['n_sub'], args_dict['gs_regress'],
-             args_dict['input_type'])
+             args_dict['input_type'], args_dict['parcellation'], 
+             args_dict['dynamic_fc'])
 
