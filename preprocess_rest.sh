@@ -1,5 +1,6 @@
 #!/bin/bash
 # Make directories
+mkdir -p data/rest
 mkdir -p data/rest/proc_1_smooth
 mkdir -p data/rest/proc_2_norm_filter
 mkdir -p data/rest/proc_3_surf_resamp
