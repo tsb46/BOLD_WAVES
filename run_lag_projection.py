@@ -146,7 +146,7 @@ def write_results(input_type, lag_results, lag_projection, hdr,
 
 if __name__ == '__main__':
     """Run main analysis"""
-    parser = argparse.ArgumentParser(description='Run main analysis')
+    parser = argparse.ArgumentParser(description='Run lag projection analysis')
     parser.add_argument('-t', '--input_type',
                         help='Whether to load resampled metric .gii files or '
                         'full cifti files',

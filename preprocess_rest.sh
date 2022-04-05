@@ -1,4 +1,7 @@
 #!/bin/bash
+
+raw=$1 # parameter flag to indicate whether the R script should be used to download HCP data - binary flag 1 (yes) or 0 (no)
+
 # Make directories
 mkdir -p data/rest
 mkdir -p data/rest/proc_1_smooth
@@ -8,7 +11,9 @@ mkdir -p data/rest/proc_4_gs_regress
 mkdir -p data/rest/proc_5_parcel_ts
 
 # Get Data from R script (ensure API and secret key are inserted in script - line 3)
-Rscript data/get_rest_cifti.R
+if [ "$raw" == 0 ]; then
+	Rscript data/get_rest_cifti.R
+fi
 
 
 # Smooth 

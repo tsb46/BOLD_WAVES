@@ -115,7 +115,7 @@ def write_results(cluster_centroid, cluster_indx, selected_tps,
 
 if __name__ == '__main__':
 	"""Run main analysis"""
-	parser = argparse.ArgumentParser(description='Run analytics on global signal')
+	parser = argparse.ArgumentParser(description='Run CAP analysis')
 	parser.add_argument('-lv','--left_vertices', 
 	                    default=None,
 	                    action='append', 

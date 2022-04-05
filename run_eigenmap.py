@@ -84,7 +84,7 @@ if __name__ == '__main__':
                         required=False,
                         type=int)
     parser.add_argument('-a', '--gradient_algorithm',
-                        help='Use Laplacian Eigenmap or PCA',
+                        help='Use Laplacian Eigenmap or Kernel PCA',
                         default='laplacian',
                         choices=['laplacian', 'pca'],
                         type=str)
