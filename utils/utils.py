@@ -56,12 +56,13 @@ def load_gifti(gifti_fps):
 	return gifti_LR
 
 
-def load_data_and_stack(n_sub, input_type, global_signal, parcel=False):
+def load_data_and_stack(n_sub, input_type, global_signal, parcel=False, verbose=False):
 	subj_files, n_sub = get_subj_file_list(n_sub, input_type, global_signal, parcel)
 	group_data, n_rows = pre_allocate_array(subj_files[0], input_type, n_sub)
 	row_indx = 0
 	for subj_file in subj_files:
-		print(subj_file)
+		if verbose:
+			print(subj_file)
 		if input_type == 'cifti':
 			subj_file = load_cifti(subj_file)
 			hdr, subj_data, n_time = pull_cifti_data(subj_file)
