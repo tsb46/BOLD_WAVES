@@ -16,8 +16,8 @@ def run_main(cpca_res, n_recon, n_bins, real=True):
 		bin_indx, bin_centers = create_bins(phase_ts, n_bins)
 		dynamic_phase_map = create_dynamic_phase_maps(recon_ts, bin_indx, n_bins)
 		bin_indx_all.append(bin_indx); bin_centers_all.append(bin_centers)
-		write_to_gifti(dynamic_phase_map, cpca_res['metadata'][2], f'cpca_comp{n}_recon', 
-		               cpca_res['metadata'][3])
+		write_to_gifti(dynamic_phase_map, cpca_res['metadata'][1], f'cpca_comp{n}_recon', 
+		               cpca_res['metadata'][2])
 	pickle.dump([bin_indx_all, bin_centers_all], open('cpca_reconstruction_results.pkl', 'wb'))
 
 

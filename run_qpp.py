@@ -81,7 +81,7 @@ def detect_qpp(data, window_length, num_scans,
         r['correlation_score'] if r else 0.0 for r in permutation_result
     ])
     if not np.any(correlation_scores):
-        raise Exception("C-PAC could not find QPP in your data. "
+        raise Exception("can't find QPP in the data"
                         "Please lower your correlation threshold and try again.")
 
     max_correlation = np.argsort(correlation_scores)[-1]
@@ -228,7 +228,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run main QPP analysis')
     parser.add_argument('-s', '--n_sub',
                         help='Number of subjects to use',
-                        default=None,
+                        default=50,
+                        required=True,
                         type=int)
     parser.add_argument('-g', '--gs_regress',
                         help='Whether to use global signal regressed data',
