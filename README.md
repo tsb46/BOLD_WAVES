@@ -88,10 +88,10 @@ chmod u+x preprocess_rest.sh
 # 3. Walk-Through of Analysis Code
 
 ## Command-Line Scripts
-Command-line scripts performed analyses that operated directly on the resting-state fMRI scan time courses. All of these analyses are performed at the group level by temporal concatenation of subject scan time courses. We provide a convenience bash shell script (```run_full_analysis.sh```) to run all the analyses in one command. Simply enter the following command into the terminal (while in the base directory of the repo):
+Command-line scripts performed analyses that operated directly on the resting-state fMRI scan time courses. All of these analyses are performed at the group level by temporal concatenation of subject scan time courses. We provide a convenience bash shell script (```run_analysis.sh```) to run all the analyses in one command. Simply enter the following command into the terminal (while in the base directory of the repo):
 
 ```
-./run_full_analysis.sh
+./run_analysis.sh
 ```
 
 For those interested in a particular analysis, the following scripts are provided in the base directory:
