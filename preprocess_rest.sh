@@ -4,6 +4,7 @@ raw=$1 # parameter flag to indicate whether the R script should be used to downl
 
 # Make directories
 mkdir -p data/rest
+mkdir -p data/rest/raw
 mkdir -p data/rest/proc_1_smooth
 mkdir -p data/rest/proc_2_norm_filter
 mkdir -p data/rest/proc_3_surf_resamp

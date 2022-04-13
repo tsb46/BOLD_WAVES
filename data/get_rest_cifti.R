@@ -6,7 +6,7 @@ make_aws_call(path_to_file = "/",
               bucket = "hcp-openaccess",region = "us-east-1", access_key = "", 
               secret_key = "",
               lifetime_minutes = 5, query = NULL, verb = "GET", sign = TRUE)
-subject_data<- read.csv('subject_100_ids.csv',header = TRUE)
+subject_data<- read.csv('subject_ids_main.csv',header = TRUE)
 subjects <- subject_data$Subject
 scans <- subject_data$Scan
 

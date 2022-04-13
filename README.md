@@ -56,11 +56,12 @@ make_aws_call(path_to_file = "/",
               lifetime_minutes = 5, query = NULL, verb = "GET", sign = TRUE)
 ```
 ## Download Using Other Source
-One could just as well download the HCP fMRI data using other means (using the subject IDs in ```subject_100_ids.csv```). If you download HCP fMRI data by other means, simply create a sub-directory called *rest* in the *data* folder, followed by a sub-directory in *rest* called *raw*. In other words:
+One could just as well download the HCP fMRI data using other means (using the subject IDs in ```subject_ids_main.csv```). If you download HCP fMRI data by other means, simply create a sub-directory called *rest* in the *data* folder, followed by a sub-directory in *rest* called *raw*. In other words:
 ```
 ├── data
 │   ├── get_rest_cifti.R
-│   ├── subject_100_ids.csv
+│   ├── subject_ids_main.csv
+│   ├── subject_ids_replication.csv
 │   ├── rest
 │   │   ├── raw
 ```
@@ -78,7 +79,6 @@ If you have downloaded the HCP fMRI through other sources (and completed the ste
 ./preprocess_rest.sh 0
 ```
 
-
 **Note**: in some cases, you may need to the bash script executable by using the following code (in your terminal):
 
 ```
@@ -88,7 +88,7 @@ chmod u+x preprocess_rest.sh
 # 3. Walk-Through of Analysis Code
 
 ## Command-Line Scripts
-Command-line scripts performed analyses that operated directly on the resting-state fMRI scan time courses. All of these analyses are performed at the group level by temporal concatenation of subject scan time courses. We provide a convenience bash shell script (```run_analysis.sh```) to run all the analyses in one command. Simply enter the following command into the terminal (while in the base directory of the repo):
+Command-line scripts performed analyses that operated directly on the resting-state fMRI scan time courses. All of these analyses are performed at the group level by temporal concatenation of subject scan time courses. All command-line scripts are meant to be run from the base directory of the repo. We provide a convenience bash shell script (```run_analysis.sh```) to run all the analyses in one command. Simply enter the following command into the terminal (while in the base directory of the repo):
 
 ```
 ./run_analysis.sh
