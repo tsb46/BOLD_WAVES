@@ -93,6 +93,7 @@ Command-line scripts performed analyses that operated directly on the resting-st
 ```
 ./run_analysis.sh
 ```
+**Note**: The outputs of the analyses are written to the main directory. The outputs of the full analysis pipeline are large, and require at least 10GB of space on your local desktop.
 
 For those interested in a particular analysis, the following scripts are provided in the base directory:
 
