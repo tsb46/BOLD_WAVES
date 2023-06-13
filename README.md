@@ -1,5 +1,5 @@
 # A Parsimonious Description of Global Functional Brain Organization in Three Spatiotemporal Patterns
-This repository contains the code and analyses for a forthcoming paper titled 'A Parsimonious Description of Global Functional Brain Organization in Three Spatiotemporal Patterns'.
+This repository contains the code and analyses for the paper titled 'A Parsimonious Description of Global Functional Brain Organization in Three Spatiotemporal Patterns'.
 
 
 ## Article Abstract
