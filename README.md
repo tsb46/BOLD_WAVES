@@ -1,5 +1,5 @@
 # A Parsimonious Description of Global Functional Brain Organization in Three Spatiotemporal Patterns
-This repository contains the code and analyses for the paper titled 'A Parsimonious Description of Global Functional Brain Organization in Three Spatiotemporal Patterns'.
+This repository contains the code and analyses for the paper titled 'A Parsimonious Description of Global Functional Brain Organization in Three Spatiotemporal Patterns'. For a stand-alone implementation of Complex PCA (CPCA) for functional MRI, see https://github.com/tsb46/complex_pca .
 
 
 ## Article Abstract
