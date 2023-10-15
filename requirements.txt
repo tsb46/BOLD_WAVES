@@ -2,7 +2,7 @@ fbpca==1.0
 hmmlearn==0.2.7
 matplotlib==3.5.1
 nibabel==3.2.2
-numpy==1.21.2
+numpy==1.22.0
 scikit_learn==1.0.2
 scipy==1.8.0
 statsmodels==0.12.1
